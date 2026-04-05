@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Provider Update — {{ patient.name }} — CareLoop{% endblock %}
+
+{% block content %}
+<div class="page-header">
+	<a href="/patient/{{ patient.id }}" class="back-link">← Back to {{ patient.name }}</a>
+	<h1 class="page-title">📋 Provider Update</h1>
+	<p class="page-subtitle">Submit a clinical note for {{ patient.name }}</p>
+</div>
+
+<div class="form-card">
+	<form action="/patient/{{ patient.id }}/provider-update" method="POST" id="provider-update-form">
+		<div class="form-group">
+			<label for="author_name" class="form-label">Provider Name</label>
+			<input type="text" id="author_name" name="author_name" class="form-input" placeholder="e.g. Dr. Sarah Patel"
+				required>
+		</div>
+
+		<div class="form-group">
+			<label for="content" class="form-label">Clinical Update</label>
+			<textarea id="content" name="content" class="form-textarea"
+				placeholder="Enter clinical observations, assessments, medication changes, recommendations..."
+				required></textarea>
+		</div>
+
+		<div class="form-actions">
+			<button type="submit" class="btn btn-primary" id="btn-submit-update">
+				Submit Provider Update
+			</button>
+			<a href="/patient/{{ patient.id }}" class="btn btn-outline">Cancel</a>
+		</div>
+	</form>
+</div>
+{% endblock %}

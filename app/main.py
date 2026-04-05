@@ -1,14 +1,16 @@
 """CareLoop — FastAPI application entry point."""
 import os
+import uuid
 from pathlib import Path
+from datetime import datetime, timezone
 from dotenv import load_dotenv
 
 load_dotenv()
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Form
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 
 from app.database import init_db, get_db
 
@@ -123,6 +125,75 @@ async def patient_timeline(request: Request, patient_id: str):
         "tasks": [dict(t) for t in tasks],
         "glm_available": bool(os.getenv("GLM_API_KEY")),
     })
+
+
+# ─── Provider Update ─────────────────────────────────────────
+@app.get("/patient/{patient_id}/provider-update", response_class=HTMLResponse)
+async def provider_update_form(request: Request, patient_id: str):
+    """Show provider update form."""
+    with get_db() as db:
+        patient = db.execute("SELECT * FROM patients WHERE id = ?", (patient_id,)).fetchone()
+        if not patient:
+            return HTMLResponse("<h1>Patient not found</h1>", status_code=404)
+
+    return templates.TemplateResponse("provider_update.html", {
+        "request": request,
+        "patient": dict(patient),
+        "glm_available": bool(os.getenv("GLM_API_KEY")),
+    })
+
+
+@app.post("/patient/{patient_id}/provider-update")
+async def submit_provider_update(
+    patient_id: str,
+    author_name: str = Form(...),
+    content: str = Form(...)
+):
+    """Submit a provider clinical update."""
+    with get_db() as db:
+        db.execute(
+            "INSERT INTO encounters (id, patient_id, author_role, author_name, type, content, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (str(uuid.uuid4()), patient_id, "provider", author_name,
+             "provider_update", content,
+             datetime.now(timezone.utc).isoformat())
+        )
+    return RedirectResponse(f"/patient/{patient_id}", status_code=303)
+
+
+# ─── Patient Check-in ────────────────────────────────────────
+@app.get("/patient/{patient_id}/checkin", response_class=HTMLResponse)
+async def checkin_form(request: Request, patient_id: str):
+    """Show patient check-in form."""
+    with get_db() as db:
+        patient = db.execute("SELECT * FROM patients WHERE id = ?", (patient_id,)).fetchone()
+        if not patient:
+            return HTMLResponse("<h1>Patient not found</h1>", status_code=404)
+
+    return templates.TemplateResponse("checkin.html", {
+        "request": request,
+        "patient": dict(patient),
+        "glm_available": bool(os.getenv("GLM_API_KEY")),
+    })
+
+
+@app.post("/patient/{patient_id}/checkin")
+async def submit_checkin(
+    patient_id: str,
+    content: str = Form(...)
+):
+    """Submit a patient check-in."""
+    with get_db() as db:
+        patient = db.execute("SELECT * FROM patients WHERE id = ?", (patient_id,)).fetchone()
+        if not patient:
+            return HTMLResponse("<h1>Patient not found</h1>", status_code=404)
+
+        db.execute(
+            "INSERT INTO encounters (id, patient_id, author_role, author_name, type, content, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (str(uuid.uuid4()), patient_id, "patient", patient["name"],
+             "patient_checkin", content,
+             datetime.now(timezone.utc).isoformat())
+        )
+    return RedirectResponse(f"/patient/{patient_id}", status_code=303)
 
 
 if __name__ == "__main__":

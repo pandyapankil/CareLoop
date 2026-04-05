@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Patient Check-in — {{ patient.name }} — CareLoop{% endblock %}
+
+{% block content %}
+<div class="page-header">
+	<a href="/patient/{{ patient.id }}" class="back-link">← Back to {{ patient.name }}</a>
+	<h1 class="page-title">💬 Patient Check-in</h1>
+	<p class="page-subtitle">How are you feeling, {{ patient.name }}?</p>
+</div>
+
+<div class="form-card">
+	<form action="/patient/{{ patient.id }}/checkin" method="POST" id="checkin-form">
+		<div class="form-group">
+			<label for="content" class="form-label">How are you doing?</label>
+			<textarea id="content" name="content" class="form-textarea"
+				placeholder="Tell us about your symptoms, how you're feeling, any concerns, medication side effects, daily activities..."
+				required></textarea>
+		</div>
+
+		<div class="form-actions">
+			<button type="submit" class="btn btn-secondary" id="btn-submit-checkin">
+				Submit Check-in
+			</button>
+			<a href="/patient/{{ patient.id }}" class="btn btn-outline">Cancel</a>
+		</div>
+	</form>
+</div>
+{% endblock %}
