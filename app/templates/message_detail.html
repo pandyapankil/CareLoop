@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}{{ message.subject }} — CareLoop{% endblock %}
+
+{% block content %}
+<div class="page-header">
+	<a href="/messages" class="back-link">&larr; Back to Messages</a>
+	<h1 class="page-title">{{ message.subject }}</h1>
+	<p class="page-subtitle">
+		{{ message.sender_name }} &rarr; {{ message.receiver_name }}
+		{% if message.urgency == 'urgent' %}
+		<span class="badge" style="background:#ef4444;color:#fff;">Urgent</span>
+		{% elif message.urgency == 'important' %}
+		<span class="badge" style="background:#f59e0b;color:#fff;">Important</span>
+		{% endif %}
+		<span class="badge">{{ message.category }}</span>
+	</p>
+</div>
+
+{% if thread %}
+<section class="section">
+	<h2 class="section-title">Thread History</h2>
+	{% for parent in thread %}
+	<div class="form-card" style="margin-bottom:0.75rem;padding:1rem;">
+		<div style="display:flex;justify-content:space-between;margin-bottom:0.5rem;">
+			<strong>{{ parent.sender_name }} &rarr; {{ parent.receiver_name }}</strong>
+			<span style="font-size:0.8rem;color:var(--text-muted,#6b7280);">{{ parent.created_at[:16] }}</span>
+		</div>
+		<h4 style="margin-bottom:0.25rem;">{{ parent.subject }}</h4>
+		<p style="white-space:pre-wrap;">{{ parent.body }}</p>
+	</div>
+	{% endfor %}
+</section>
+{% endif %}
+
+<div class="form-card" style="padding:1.25rem;">
+	<div style="display:flex;justify-content:space-between;margin-bottom:0.75rem;">
+		<strong>{{ message.sender_name }} &rarr; {{ message.receiver_name }}</strong>
+		<span style="font-size:0.8rem;color:var(--text-muted,#6b7280);">{{ message.created_at[:16] }}</span>
+	</div>
+	<h3 style="margin-bottom:0.5rem;">{{ message.subject }}</h3>
+	<p style="white-space:pre-wrap;line-height:1.6;">{{ message.body }}</p>
+</div>
+
+{% if replies %}
+<section class="section">
+	<h2 class="section-title">Replies</h2>
+	{% for reply in replies %}
+	<div class="form-card" style="margin-bottom:0.75rem;padding:1rem;">
+		<div style="display:flex;justify-content:space-between;margin-bottom:0.5rem;">
+			<strong>{{ reply.sender_name }} &rarr; {{ reply.receiver_name }}</strong>
+			<span style="font-size:0.8rem;color:var(--text-muted,#6b7280);">{{ reply.created_at[:16] }}</span>
+		</div>
+		<p style="white-space:pre-wrap;">{{ reply.body }}</p>
+	</div>
+	{% endfor %}
+</section>
+{% endif %}
+
+<section class="section">
+	<h2 class="section-title">Reply</h2>
+	<div class="form-card">
+		<form action="/message/{{ message.id }}/reply" method="POST">
+			<div class="form-group">
+				<label for="body" class="form-label">Your Reply</label>
+				<textarea id="body" name="body" class="form-textarea" rows="4"
+					placeholder="Type your reply..." required></textarea>
+			</div>
+			<div class="form-actions">
+				<button type="submit" class="btn btn-primary">Send Reply</button>
+				<a href="/messages" class="btn btn-outline">Cancel</a>
+			</div>
+		</form>
+	</div>
+</section>
+{% endblock %}

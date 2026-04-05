@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}{{ appointment.title }} — CareLoop{% endblock %}
+
+{% block content %}
+<div class="page-header">
+	<a href="/patient/{{ patient.id }}/appointments" class="back-link">← All Appointments</a>
+	<div>
+		<h1 class="page-title">{{ appointment.title }}</h1>
+		<p class="page-subtitle">{{ patient.name }} &middot; {{ appointment.countdown }}</p>
+	</div>
+</div>
+
+<section class="section">
+	<div class="task-card">
+		<div class="task-header">
+			<span class="task-title">Appointment Details</span>
+			<span class="badge badge-{% if appointment.status == 'scheduled' %}patient{% elif appointment.status == 'confirmed' %}provider{% elif appointment.status == 'completed' %}ai{% else %}qa{% endif %}">
+				{{ appointment.status }}
+			</span>
+		</div>
+		<div class="task-meta">
+			<strong>When:</strong> {{ appointment.scheduled_at[:16] if appointment.scheduled_at else 'TBD' }}
+			&middot; {{ appointment.countdown }}
+		</div>
+		<div class="task-meta"><strong>Duration:</strong> {{ appointment.duration_minutes }} minutes</div>
+		{% if appointment.provider_name %}
+		<div class="task-meta"><strong>Provider:</strong> {{ appointment.provider_name }}</div>
+		{% endif %}
+		{% if appointment.location %}
+		<div class="task-meta">
+			<strong>Location:</strong>
+			{% if appointment.location_url %}
+			<a href="{{ appointment.location_url }}" target="_blank">{{ appointment.location }}</a>
+			{% else %}
+			{{ appointment.location }}
+			{% endif %}
+		</div>
+		{% endif %}
+		{% if appointment.description %}
+		<div class="task-desc">{{ appointment.description }}</div>
+		{% endif %}
+	</div>
+</section>
+
+{% if appointment.location_url and ('google.com/maps' in appointment.location_url or 'maps.google' in appointment.location_url or '?q=' in appointment.location_url) %}
+<section class="section">
+	<h2 class="section-title">Location Map</h2>
+	<div class="task-card">
+		<iframe
+			src="{{ appointment.location_url }}"
+			width="100%"
+			height="300"
+			style="border:0;border-radius:8px;"
+			allowfullscreen=""
+			loading="lazy"
+			referrerpolicy="no-referrer-when-downgrade">
+		</iframe>
+	</div>
+</section>
+{% endif %}
+
+<section class="section">
+	<h2 class="section-title">Update Status</h2>
+	<div class="action-bar">
+		<form action="/appointment/{{ appointment.id }}/status" method="POST" style="display:inline">
+			<input type="hidden" name="status" value="scheduled">
+			<button type="submit" class="btn btn-outline">Scheduled</button>
+		</form>
+		<form action="/appointment/{{ appointment.id }}/status" method="POST" style="display:inline">
+			<input type="hidden" name="status" value="confirmed">
+			<button type="submit" class="btn btn-primary">Confirmed</button>
+		</form>
+		<form action="/appointment/{{ appointment.id }}/status" method="POST" style="display:inline">
+			<input type="hidden" name="status" value="completed">
+			<button type="submit" class="btn btn-secondary">Completed</button>
+		</form>
+		<form action="/appointment/{{ appointment.id }}/status" method="POST" style="display:inline">
+			<input type="hidden" name="status" value="canceled">
+			<button type="submit" class="btn btn-danger">Cancel</button>
+		</form>
+	</div>
+</section>
+
+{% if appointment.checklist_total > 0 %}
+<section class="section">
+	<h2 class="section-title">Prep Checklist ({{ appointment.checklist_completed }}/{{ appointment.checklist_total }})</h2>
+	<div class="tasks-list">
+		{% for item in appointment.prep_checklist %}
+		<div class="task-card" style="display:flex;align-items:center;justify-content:space-between;">
+			<span style="text-decoration:{% if item.completed %}line-through{% else %}none{% endif %};">
+				{% if item.completed %}✅{% else %}⬜{% endif %}
+				{{ item.item }}
+			</span>
+			<form action="/appointment/{{ appointment.id }}/checklist" method="POST">
+				<input type="hidden" name="item_index" value="{{ loop.index0 }}">
+				<button type="submit" class="btn btn-outline" style="font-size:0.8rem;">
+					{% if item.completed %}Undo{% else %}Complete{% endif %}
+				</button>
+			</form>
+		</div>
+		{% endfor %}
+	</div>
+</section>
+{% endif %}
+{% endblock %}

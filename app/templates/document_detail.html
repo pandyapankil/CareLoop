@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}{{ document.original_filename }} — CareLoop{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <a href="/patient/{{ document.patient_id }}/documents" class="back-link">← Back to Documents</a>
+    <h1 class="page-title">{{ document.original_filename }}</h1>
+    <p class="page-subtitle">
+        {% if patient %}{{ patient.name }} · {% endif %}{{ document.category.replace('_', ' ') | title }}
+    </p>
+</div>
+
+<div class="stats-row">
+    <div class="stat-card">
+        <div class="stat-number">{{ (document.file_size / 1024) | round(1) }} KB</div>
+        <div class="stat-label">File Size</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ document.file_type }}</div>
+        <div class="stat-label">File Type</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">
+            <span class="badge badge-{{ document.status }}">{{ document.status }}</span>
+        </div>
+        <div class="stat-label">Status</div>
+    </div>
+</div>
+
+<section class="section">
+    <h2 class="section-title">Document Details</h2>
+    <div class="task-card">
+        <div class="task-meta">Uploaded: {{ document.created_at[:16] }}</div>
+        {% if document.description %}
+        <div class="task-desc">{{ document.description }}</div>
+        {% endif %}
+        {% if reviewer %}
+        <div class="task-meta">Reviewed by: {{ reviewer.name }} at {{ document.reviewed_at[:16] }}</div>
+        {% endif %}
+    </div>
+</section>
+
+<div class="action-bar">
+    <a href="/document/{{ document.id }}/download" class="btn btn-primary">Download File</a>
+</div>
+
+{% if document.status == 'pending' %}
+<section class="section" style="margin-top: 2rem;">
+    <h2 class="section-title">Review Document</h2>
+    <div class="form-card">
+        <form action="/document/{{ document.id }}/review" method="POST">
+            <div class="form-group">
+                <label for="action" class="form-label">Decision</label>
+                <select id="action" name="action" class="form-select" required>
+                    <option value="approve">Approve</option>
+                    <option value="reject">Reject</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="notes" class="form-label">Notes</label>
+                <textarea id="notes" name="notes" class="form-textarea"
+                    placeholder="Optional review notes..."
+                    rows="3"></textarea>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-accent">Submit Review</button>
+            </div>
+        </form>
+    </div>
+</section>
+{% endif %}
+{% endblock %}

@@ -1,20 +1,48 @@
 {% extends "base.html" %}
-{% block title %}CareLoop — Dashboard{% endblock %}
+{% block title %}CareLoop — AI-Powered Care Coordination{% endblock %}
 
 {% block content %}
-<div class="page-header">
-	<h1 class="page-title">Patient Dashboard</h1>
-	<p class="page-subtitle">AI-powered care coordination at a glance</p>
+<div class="hero-section">
+	<div class="hero-content">
+		<h1 class="page-title">Closing the Healthcare Coordination Gap</h1>
+		<p class="page-subtitle">CareLoop uses GLM 5.1 to transform fragmented clinical notes into actionable care
+			coordination paths. Empowering teams, illuminating trends, and answering patients.</p>
+
+		<div class="hero-actions">
+			<a href="#patients" class="btn btn-accent">Explore Patients</a>
+			<div class="hero-badge">
+				<span class="badge badge-ai">GLM 5.1 Active</span>
+			</div>
+		</div>
+	</div>
+
+	<div class="hero-features">
+		<div class="feature-mini-card">
+			<span class="feature-icon">✨</span>
+			<h4>AI Summaries</h4>
+			<p>From complex notes to clear actions.</p>
+		</div>
+		<div class="feature-mini-card">
+			<span class="feature-icon">📈</span>
+			<h4>Trend Logic</h4>
+			<p>Spotting clinical shifts early.</p>
+		</div>
+		<div class="feature-mini-card">
+			<span class="feature-icon">💬</span>
+			<h4>Patient Q&A</h4>
+			<p>Context-aware answers, instantly.</p>
+		</div>
+	</div>
 </div>
 
 <div class="stats-row">
 	<div class="stat-card">
 		<div class="stat-number">{{ patients|length }}</div>
-		<div class="stat-label">Patients</div>
+		<div class="stat-label">Active Patients</div>
 	</div>
 	<div class="stat-card">
 		<div class="stat-number">{{ patients|map(attribute='encounter_count')|sum }}</div>
-		<div class="stat-label">Encounters</div>
+		<div class="stat-label">Processed encounters</div>
 	</div>
 	<div class="stat-card">
 		<div class="stat-number">{{ patients|map(attribute='analysis_count')|sum }}</div>
@@ -22,38 +50,49 @@
 	</div>
 </div>
 
-{% if patients %}
-<div class="patient-grid">
-	{% for patient in patients %}
-	<a href="/patient/{{ patient.id }}" class="patient-card" id="patient-{{ patient.id }}">
-		<div class="patient-card-header">
-			<div class="patient-avatar">{{ patient.name[0] }}</div>
-			<div class="patient-info">
-				<h3 class="patient-name">{{ patient.name }}</h3>
-				<span class="patient-condition">{{ patient.condition }}</span>
+<div class="section" id="patients">
+	<div class="section-header">
+		<h2 class="section-title">Patient Roster</h2>
+		<p class="text-muted">Select a patient to view their timeline or run a new GLM analysis.</p>
+	</div>
+
+	{% if patients %}
+	<div class="patient-grid">
+		{% for patient in patients %}
+		<a href="/patient/{{ patient.id }}" class="patient-card" id="patient-{{ patient.id }}">
+			<div class="patient-card-header">
+				<div class="patient-avatar">{{ patient.name[0] }}</div>
+				<div class="patient-info">
+					<h3 class="patient-name">{{ patient.name }}</h3>
+					<span class="patient-condition">{{ patient.condition }}</span>
+				</div>
 			</div>
-		</div>
-		<div class="patient-card-stats">
-			<div class="mini-stat">
-				<span class="mini-stat-value">{{ patient.encounter_count }}</span>
-				<span class="mini-stat-label">encounters</span>
+
+			<div class="patient-card-body">
+				<div class="patient-card-stats">
+					<div class="mini-stat">
+						<span class="mini-stat-value">{{ patient.encounter_count }}</span>
+						<span class="mini-stat-label">encounters</span>
+					</div>
+					<div class="mini-stat">
+						<span class="mini-stat-value">{{ patient.analysis_count }}</span>
+						<span class="mini-stat-label">analyses</span>
+					</div>
+				</div>
 			</div>
-			<div class="mini-stat">
-				<span class="mini-stat-value">{{ patient.analysis_count }}</span>
-				<span class="mini-stat-label">analyses</span>
+
+			<div class="patient-card-footer">
+				<span class="view-link">Open Timeline <span class="arrow">→</span></span>
 			</div>
-		</div>
-		<div class="patient-card-footer">
-			<span class="view-link">View Timeline →</span>
-		</div>
-	</a>
-	{% endfor %}
+		</a>
+		{% endfor %}
+	</div>
+	{% else %}
+	<div class="empty-state">
+		<div class="empty-icon">🏥</div>
+		<h2>No patients found</h2>
+		<p>Run <code>python seed.py</code> to populate the database with demonstration data.</p>
+	</div>
+	{% endif %}
 </div>
-{% else %}
-<div class="empty-state">
-	<div class="empty-icon">🏥</div>
-	<h2>No patients yet</h2>
-	<p>Run <code>python seed.py</code> to add demo patients.</p>
-</div>
-{% endif %}
 {% endblock %}

@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}Messages — CareLoop{% endblock %}
+
+{% block content %}
+<div class="page-header">
+	<h1 class="page-title">Messages</h1>
+	<p class="page-subtitle">Healthcare communication inbox</p>
+</div>
+
+<div class="action-bar">
+	<a href="/messages/compose" class="btn btn-primary">Compose New Message</a>
+</div>
+
+<div class="section">
+	<div style="display:flex;gap:1rem;margin-bottom:1.5rem;">
+		<button class="btn btn-primary tab-btn active" onclick="switchTab('inbox')">Inbox</button>
+		<button class="btn btn-outline tab-btn" onclick="switchTab('sent')">Sent</button>
+	</div>
+
+	<div id="tab-inbox">
+		{% if received %}
+		{% for msg in received %}
+		<div class="form-card" style="margin-bottom:0.75rem;padding:1rem;{% if not msg.read %}border-left:3px solid #3b82f6;{% endif %}">
+			<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:0.5rem;">
+				<div style="flex:1;min-width:200px;">
+					<div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.25rem;">
+						{% if not msg.read %}<span style="width:8px;height:8px;background:#3b82f6;border-radius:50%;display:inline-block;"></span>{% endif %}
+						<strong>{{ msg.sender_name }}</strong>
+						{% if msg.urgency == 'urgent' %}
+						<span class="badge" style="background:#ef4444;color:#fff;">Urgent</span>
+						{% elif msg.urgency == 'important' %}
+						<span class="badge" style="background:#f59e0b;color:#fff;">Important</span>
+						{% endif %}
+					</div>
+					<a href="/message/{{ msg.id }}" style="color:inherit;text-decoration:none;">
+						<div style="font-weight:500;">{{ msg.subject }}</div>
+						<div style="font-size:0.85rem;color:var(--text-muted,#6b7280);margin-top:0.25rem;">{{ msg.body[:120] }}{% if msg.body|length > 120 %}...{% endif %}</div>
+					</a>
+				</div>
+				<div style="font-size:0.8rem;color:var(--text-muted,#6b7280);white-space:nowrap;">
+					{{ msg.created_at[:16] }}
+				</div>
+			</div>
+		</div>
+		{% endfor %}
+		{% else %}
+		<div class="empty-state">
+			<div class="empty-icon">📭</div>
+			<h3>Inbox empty</h3>
+			<p>No messages received yet.</p>
+		</div>
+		{% endif %}
+	</div>
+
+	<div id="tab-sent" style="display:none;">
+		{% if sent %}
+		{% for msg in sent %}
+		<div class="form-card" style="margin-bottom:0.75rem;padding:1rem;">
+			<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:0.5rem;">
+				<div style="flex:1;min-width:200px;">
+					<div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.25rem;">
+						<span style="font-size:0.85rem;color:var(--text-muted,#6b7280);">To:</span>
+						<strong>{{ msg.receiver_name }}</strong>
+						{% if msg.urgency == 'urgent' %}
+						<span class="badge" style="background:#ef4444;color:#fff;">Urgent</span>
+						{% elif msg.urgency == 'important' %}
+						<span class="badge" style="background:#f59e0b;color:#fff;">Important</span>
+						{% endif %}
+					</div>
+					<a href="/message/{{ msg.id }}" style="color:inherit;text-decoration:none;">
+						<div style="font-weight:500;">{{ msg.subject }}</div>
+						<div style="font-size:0.85rem;color:var(--text-muted,#6b7280);margin-top:0.25rem;">{{ msg.body[:120] }}{% if msg.body|length > 120 %}...{% endif %}</div>
+					</a>
+				</div>
+				<div style="font-size:0.8rem;color:var(--text-muted,#6b7280);white-space:nowrap;">
+					{{ msg.created_at[:16] }}
+				</div>
+			</div>
+		</div>
+		{% endfor %}
+		{% else %}
+		<div class="empty-state">
+			<div class="empty-icon">📤</div>
+			<h3>No sent messages</h3>
+			<p>Compose a new message to get started.</p>
+		</div>
+		{% endif %}
+	</div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function switchTab(tab){
+	document.getElementById('tab-inbox').style.display = tab==='inbox'?'block':'none';
+	document.getElementById('tab-sent').style.display = tab==='sent'?'block':'none';
+	document.querySelectorAll('.tab-btn').forEach(function(b,i){
+		if((tab==='inbox'&&i===0)||(tab==='sent'&&i===1)){
+			b.classList.remove('btn-outline');b.classList.add('btn-primary');
+		} else {
+			b.classList.remove('btn-primary');b.classList.add('btn-outline');
+		}
+	});
+}
+</script>
+{% endblock %}

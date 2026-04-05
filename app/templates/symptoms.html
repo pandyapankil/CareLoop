@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% block title %}Symptom Tracking — {{ patient.name }} — CareLoop{% endblock %}
+
+{% block content %}
+<div class="page-header">
+	<a href="/patient/{{ patient.id }}" class="back-link">&larr; Back to {{ patient.name }}</a>
+	<h1 class="page-title">Symptom Tracking</h1>
+	<p class="page-subtitle">Monitor symptoms and trends for {{ patient.name }}</p>
+</div>
+
+<div class="action-bar">
+	<a href="/patient/{{ patient.id }}/symptoms/new" class="btn btn-primary">Log New Symptoms</a>
+</div>
+
+{% if trend_data != "[]" %}
+<section class="section">
+	<h2 class="section-title">30-Day Trend</h2>
+	<div class="form-card">
+		<svg viewBox="0 0 700 250" style="width:100%;height:auto;" id="trend-chart">
+			<line x1="50" y1="20" x2="50" y2="210" stroke="var(--text-muted, #6b7280)" stroke-width="1"/>
+			<line x1="50" y1="210" x2="680" y2="210" stroke="var(--text-muted, #6b7280)" stroke-width="1"/>
+			<text x="15" y="25" fill="var(--text-muted, #6b7280)" font-size="10">10</text>
+			<text x="20" y="110" fill="var(--text-muted, #6b7280)" font-size="10">5</text>
+			<text x="25" y="215" fill="var(--text-muted, #6b7280)" font-size="10">0</text>
+			<line x1="50" y1="110" x2="680" y2="110" stroke="var(--border-color, #e5e7eb)" stroke-width="0.5" stroke-dasharray="4"/>
+			<line x1="50" y1="60" x2="680" y2="60" stroke="var(--border-color, #e5e7eb)" stroke-width="0.5" stroke-dasharray="4"/>
+			<line x1="50" y1="160" x2="680" y2="160" stroke="var(--border-color, #e5e7eb)" stroke-width="0.5" stroke-dasharray="4"/>
+		</svg>
+		<div style="display:flex;gap:1.5rem;margin-top:0.75rem;">
+			<span style="color:#ef4444;font-size:0.85rem;">&#9679; Pain Level</span>
+			<span style="color:#3b82f6;font-size:0.85rem;">&#9679; Mood Level</span>
+			<span style="color:#10b981;font-size:0.85rem;">&#9679; Sleep Quality</span>
+		</div>
+	</div>
+</section>
+{% endif %}
+
+<section class="section">
+	<h2 class="section-title">Recent Entries</h2>
+	{% if entries %}
+	<div class="timeline">
+		{% for entry in entries %}
+		{% set vitals = entry.vitals %}
+		<div class="timeline-item">
+			<div class="timeline-marker"></div>
+			<div class="timeline-content">
+				<div class="timeline-header">
+					<span class="badge" style="background:{% if entry.pain_level >= 7 %}#ef4444{% elif entry.pain_level >= 4 %}#f59e0b{% else %}#10b981{% endif %};color:#fff;">
+						Pain: {{ entry.pain_level }}/10
+					</span>
+					<span class="timeline-date">{{ entry.logged_at[:16] }}</span>
+				</div>
+				<div class="timeline-body">
+					<div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:0.5rem;">
+						<span>Mood: <strong>{{ entry.mood_level }}/10</strong></span>
+						<span>Sleep: <strong>{{ entry.sleep_quality }}/10</strong></span>
+					</div>
+					{% if vitals %}
+					<div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:0.5rem;font-size:0.85rem;color:var(--text-muted,#6b7280);">
+						{% if vitals.blood_pressure %}<span>BP: {{ vitals.blood_pressure }}</span>{% endif %}
+						{% if vitals.heart_rate %}<span>HR: {{ vitals.heart_rate }} bpm</span>{% endif %}
+						{% if vitals.temperature %}<span>Temp: {{ vitals.temperature }}&deg;F</span>{% endif %}
+						{% if vitals.weight %}<span>Weight: {{ vitals.weight }} lbs</span>{% endif %}
+					</div>
+					{% endif %}
+					{% if entry.notes %}
+					<p>{{ entry.notes }}</p>
+					{% endif %}
+					<a href="/symptom/{{ entry.id }}" class="analysis-detail-link">View Detail &rarr;</a>
+				</div>
+			</div>
+		</div>
+		{% endfor %}
+	</div>
+	{% else %}
+	<div class="empty-state">
+		<div class="empty-icon">📋</div>
+		<h3>No symptom entries yet</h3>
+		<p>Start tracking symptoms to see trends over time.</p>
+	</div>
+	{% endif %}
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function(){
+	var data = {{ trend_data | safe }};
+	if(!data || !data.length) return;
+	var svg = document.getElementById('trend-chart');
+	if(!svg) return;
+	var w=700, h=250, padL=50, padR=20, padT=20, padB=30;
+	var plotW = w - padL - padR;
+	var plotH = h - padT - padB;
+	var n = data.length;
+	if(n < 1) return;
+	function xPos(i){ return padL + (i / Math.max(n-1,1)) * plotW; }
+	function yPos(v){ return padT + plotH - (v / 10) * plotH; }
+	function makePath(key, color){
+		var pts = data.map(function(d,i){ return {x:xPos(i), y:yPos(d[key])}; });
+		if(pts.length === 1){
+			var c = document.createElementNS("http://www.w3.org/2000/svg","circle");
+			c.setAttribute("cx",pts[0].x);c.setAttribute("cy",pts[0].y);
+			c.setAttribute("r","4");c.setAttribute("fill",color);
+			svg.appendChild(c);
+			return;
+		}
+		var d = "M"+pts[0].x+","+pts[0].y;
+		for(var i=1;i<pts.length;i++){
+			var xm=(pts[i-1].x+pts[i].x)/2;
+			d+=" C"+xm+","+pts[i-1].y+" "+xm+","+pts[i].y+" "+pts[i].x+","+pts[i].y;
+		}
+		var path = document.createElementNS("http://www.w3.org/2000/svg","path");
+		path.setAttribute("d",d);path.setAttribute("fill","none");
+		path.setAttribute("stroke",color);path.setAttribute("stroke-width","2.5");
+		path.setAttribute("stroke-linecap","round");
+		svg.appendChild(path);
+		pts.forEach(function(p){
+			var c = document.createElementNS("http://www.w3.org/2000/svg","circle");
+			c.setAttribute("cx",p.x);c.setAttribute("cy",p.y);
+			c.setAttribute("r","3");c.setAttribute("fill",color);
+			svg.appendChild(c);
+		});
+	}
+	if(n > 1){
+		data.forEach(function(d,i){
+			if(i % Math.max(1, Math.floor(n/6)) !== 0 && i !== n-1) return;
+			var t = document.createElementNS("http://www.w3.org/2000/svg","text");
+			t.setAttribute("x",xPos(i));t.setAttribute("y",h-5);
+			t.setAttribute("fill","var(--text-muted,#6b7280)");
+			t.setAttribute("font-size","9");t.setAttribute("text-anchor","middle");
+			t.textContent = d.day.slice(5);
+			svg.appendChild(t);
+		});
+	}
+	makePath("pain","#ef4444");
+	makePath("mood","#3b82f6");
+	makePath("sleep","#10b981");
+})();
+</script>
+{% endblock %}

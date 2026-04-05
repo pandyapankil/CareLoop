@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block title %}Register — CareLoop{% endblock %}
+
+{% block content %}
+<div class="page-header">
+	<a href="/auth/login" class="back-link">← Back to Login</a>
+	<h1 class="page-title">Create Your Account</h1>
+	<p class="page-subtitle">Register as a patient to access your care coordination dashboard</p>
+</div>
+
+{% if error %}
+<div class="form-error" role="alert">
+	{{ error }}
+</div>
+{% endif %}
+
+<div class="form-card">
+	<form action="/auth/register" method="POST" id="register-form" aria-label="Registration form">
+		<div class="form-group">
+			<label for="name" class="form-label">Full Name</label>
+			<input type="text" id="name" name="name" class="form-input"
+				placeholder="Your full name" required autocomplete="name"
+				aria-required="true" minlength="1" maxlength="255">
+		</div>
+
+		<div class="form-group">
+			<label for="email" class="form-label">Email Address</label>
+			<input type="email" id="email" name="email" class="form-input"
+				placeholder="you@example.com" required autocomplete="email"
+				aria-required="true">
+		</div>
+
+		<div class="form-group">
+			<label for="password" class="form-label">Password</label>
+			<input type="password" id="password" name="password" class="form-input"
+				placeholder="At least 8 characters" required autocomplete="new-password"
+				aria-required="true" minlength="8">
+		</div>
+
+		<div class="form-group">
+			<label for="confirm_password" class="form-label">Confirm Password</label>
+			<input type="password" id="confirm_password" name="confirm_password" class="form-input"
+				placeholder="Re-enter your password" required autocomplete="new-password"
+				aria-required="true" minlength="8">
+		</div>
+
+		<div class="form-group">
+			<label for="date_of_birth" class="form-label">Date of Birth</label>
+			<input type="date" id="date_of_birth" name="date_of_birth" class="form-input"
+				autocomplete="bday">
+		</div>
+
+		<div class="form-group">
+			<label for="condition" class="form-label">Condition <span style="color:#64748b">(optional)</span></label>
+			<input type="text" id="condition" name="condition" class="form-input"
+				placeholder="e.g. Post-surgery recovery, Diabetes management">
+		</div>
+
+		<div class="form-actions">
+			<button type="submit" class="btn btn-primary" id="btn-register">Create Account</button>
+			<a href="/auth/login" class="btn btn-outline">Cancel</a>
+		</div>
+	</form>
+
+	<div class="form-footer">
+		<p>Already have an account? <a href="/auth/login">Sign in</a></p>
+	</div>
+</div>
+
+<style>
+.form-error {
+	background: rgba(239, 68, 68, 0.12);
+	border: 1px solid rgba(239, 68, 68, 0.3);
+	color: #fca5a5;
+	padding: 0.75rem 1rem;
+	border-radius: 8px;
+	margin-bottom: 1.5rem;
+	font-size: 0.9rem;
+}
+.form-actions {
+	display: flex;
+	gap: 0.75rem;
+	margin-top: 1.5rem;
+}
+.form-footer {
+	text-align: center;
+	margin-top: 1.25rem;
+	padding-top: 1.25rem;
+	border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+.form-footer a {
+	color: #a78bfa;
+	text-decoration: none;
+}
+.form-footer a:hover {
+	text-decoration: underline;
+}
+.form-footer p {
+	color: #94a3b8;
+	font-size: 0.875rem;
+}
+.page-header {
+	text-align: center;
+	margin-bottom: 2rem;
+}
+.page-subtitle {
+	color: #94a3b8;
+	font-size: 1rem;
+	margin-top: 0.5rem;
+}
+</style>
+{% endblock %}

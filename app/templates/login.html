@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+{% block title %}Login — CareLoop{% endblock %}
+
+{% block content %}
+<div class="page-header">
+	<h1 class="page-title">Welcome to CareLoop</h1>
+	<p class="page-subtitle">Sign in to access your care coordination dashboard</p>
+</div>
+
+{% if demo_mode %}
+<div class="demo-section">
+	<h2 class="section-title" style="text-align:center; margin-bottom: 1.5rem;">Demo Mode — Pick a Persona</h2>
+	<div class="demo-persona-grid">
+		<a href="/auth/demo-switch/patient" class="demo-persona-card" aria-label="Login as Maria Santos, Patient">
+			<div class="persona-icon">🏥</div>
+			<div class="persona-info">
+				<h3 class="persona-name">Maria Santos</h3>
+				<span class="persona-role">Patient</span>
+				<p class="persona-desc">Post-cardiac surgery recovery. View your care timeline and check in.</p>
+			</div>
+		</a>
+		<a href="/auth/demo-switch/provider" class="demo-persona-card" aria-label="Login as Dr. James Chen, Provider">
+			<div class="persona-icon">👨‍⚕️</div>
+			<div class="persona-info">
+				<h3 class="persona-name">Dr. James Chen</h3>
+				<span class="persona-role">Provider</span>
+				<p class="persona-desc">Cardiologist. Manage patients, write updates, and review AI analyses.</p>
+			</div>
+		</a>
+		<a href="/auth/demo-switch/specialist" class="demo-persona-card" aria-label="Login as Dr. Sarah Patel, Specialist">
+			<div class="persona-icon">🔬</div>
+			<div class="persona-info">
+				<h3 class="persona-name">Dr. Sarah Patel</h3>
+				<span class="persona-role">Specialist</span>
+				<p class="persona-desc">Endocrinologist. Coordinate care for complex chronic conditions.</p>
+			</div>
+		</a>
+		<a href="/auth/demo-switch/nurse" class="demo-persona-card" aria-label="Login as Nurse Kim">
+			<div class="persona-icon">🩺</div>
+			<div class="persona-info">
+				<h3 class="persona-name">Nurse Kim</h3>
+				<span class="persona-role">Nurse</span>
+				<p class="persona-desc">Care coordination nurse. Track patient progress and manage tasks.</p>
+			</div>
+		</a>
+		<a href="/auth/demo-switch/coordinator" class="demo-persona-card" aria-label="Login as Coord. Alex">
+			<div class="persona-icon">📋</div>
+			<div class="persona-info">
+				<h3 class="persona-name">Coord. Alex</h3>
+				<span class="persona-role">Care Coordinator</span>
+				<p class="persona-desc">Orchestrate care plans, schedule appointments, and connect the team.</p>
+			</div>
+		</a>
+		<a href="/auth/demo-switch/admin" class="demo-persona-card" aria-label="Login as Admin User">
+			<div class="persona-icon">⚙️</div>
+			<div class="persona-info">
+				<h3 class="persona-name">Admin User</h3>
+				<span class="persona-role">Administrator</span>
+				<p class="persona-desc">Full system access. Manage users, settings, and audit logs.</p>
+			</div>
+		</a>
+	</div>
+</div>
+
+<div class="auth-divider">
+	<span>or sign in with credentials</span>
+</div>
+{% endif %}
+
+{% if error %}
+<div class="form-error" role="alert">
+	{{ error }}
+</div>
+{% endif %}
+
+<div class="form-card">
+	<form action="/auth/login" method="POST" id="login-form" aria-label="Login form">
+		<div class="form-group">
+			<label for="email" class="form-label">Email</label>
+			<input type="email" id="email" name="email" class="form-input"
+				placeholder="you@example.com" required autocomplete="email"
+				aria-required="true">
+		</div>
+
+		<div class="form-group">
+			<label for="password" class="form-label">Password</label>
+			<input type="password" id="password" name="password" class="form-input"
+				placeholder="Enter your password" required autocomplete="current-password"
+				aria-required="true">
+		</div>
+
+		<div class="form-actions">
+			<button type="submit" class="btn btn-primary" id="btn-login">Sign In</button>
+		</div>
+	</form>
+
+	<div class="form-footer">
+		<p>Don't have an account? <a href="/auth/register">Register as a patient</a></p>
+	</div>
+</div>
+
+<style>
+.demo-persona-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+	gap: 1rem;
+	margin-bottom: 2rem;
+}
+.demo-persona-card {
+	display: flex;
+	align-items: flex-start;
+	gap: 1rem;
+	padding: 1.25rem;
+	background: rgba(255, 255, 255, 0.04);
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	border-radius: 12px;
+	text-decoration: none;
+	color: inherit;
+	transition: all 0.2s ease;
+}
+.demo-persona-card:hover {
+	background: rgba(255, 255, 255, 0.08);
+	border-color: rgba(139, 92, 246, 0.4);
+	transform: translateY(-2px);
+	box-shadow: 0 8px 24px rgba(139, 92, 246, 0.12);
+}
+.persona-icon {
+	font-size: 2rem;
+	flex-shrink: 0;
+	width: 48px;
+	height: 48px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: rgba(139, 92, 246, 0.15);
+	border-radius: 10px;
+}
+.persona-info {
+	flex: 1;
+	min-width: 0;
+}
+.persona-name {
+	margin: 0 0 0.15rem 0;
+	font-size: 1rem;
+	font-weight: 600;
+	color: #e2e8f0;
+}
+.persona-role {
+	display: inline-block;
+	font-size: 0.75rem;
+	font-weight: 500;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	color: #a78bfa;
+	background: rgba(139, 92, 246, 0.15);
+	padding: 0.15rem 0.5rem;
+	border-radius: 4px;
+	margin-bottom: 0.4rem;
+}
+.persona-desc {
+	margin: 0.35rem 0 0 0;
+	font-size: 0.85rem;
+	color: #94a3b8;
+	line-height: 1.4;
+}
+.auth-divider {
+	display: flex;
+	align-items: center;
+	gap: 1rem;
+	margin: 2rem 0;
+}
+.auth-divider::before,
+.auth-divider::after {
+	content: "";
+	flex: 1;
+	height: 1px;
+	background: rgba(255, 255, 255, 0.1);
+}
+.auth-divider span {
+	font-size: 0.85rem;
+	color: #64748b;
+	white-space: nowrap;
+}
+.form-error {
+	background: rgba(239, 68, 68, 0.12);
+	border: 1px solid rgba(239, 68, 68, 0.3);
+	color: #fca5a5;
+	padding: 0.75rem 1rem;
+	border-radius: 8px;
+	margin-bottom: 1.5rem;
+	font-size: 0.9rem;
+}
+.form-actions {
+	display: flex;
+	gap: 0.75rem;
+	margin-top: 1.5rem;
+}
+.form-footer {
+	text-align: center;
+	margin-top: 1.25rem;
+	padding-top: 1.25rem;
+	border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+.form-footer a {
+	color: #a78bfa;
+	text-decoration: none;
+}
+.form-footer a:hover {
+	text-decoration: underline;
+}
+.form-footer p {
+	color: #94a3b8;
+	font-size: 0.875rem;
+}
+.page-header {
+	text-align: center;
+	margin-bottom: 2rem;
+}
+.page-subtitle {
+	color: #94a3b8;
+	font-size: 1rem;
+	margin-top: 0.5rem;
+}
+</style>
+{% endblock %}

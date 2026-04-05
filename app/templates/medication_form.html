@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Add Medication — {{ patient.name }} — CareLoop{% endblock %}
+
+{% block content %}
+<div class="page-header">
+	<a href="/patient/{{ patient.id }}/medications" class="back-link">← All Medications</a>
+	<h1 class="page-title">Add Medication</h1>
+	<p class="page-subtitle">Add a new medication for {{ patient.name }}</p>
+</div>
+
+<div class="form-card">
+	<form action="/patient/{{ patient.id }}/medications/new" method="POST" id="medication-form">
+		<div class="form-group">
+			<label for="name" class="form-label">Medication Name</label>
+			<input type="text" id="name" name="name" class="form-input"
+				placeholder="e.g. Metformin" required>
+		</div>
+
+		<div class="form-group">
+			<label for="dosage" class="form-label">Dosage</label>
+			<input type="text" id="dosage" name="dosage" class="form-input"
+				placeholder="e.g. 500mg" required>
+		</div>
+
+		<div class="form-group">
+			<label for="frequency" class="form-label">Frequency</label>
+			<input type="text" id="frequency" name="frequency" class="form-input"
+				placeholder="e.g. Twice daily" required>
+		</div>
+
+		<div class="form-group">
+			<label for="start_date" class="form-label">Start Date</label>
+			<input type="date" id="start_date" name="start_date" class="form-input" required>
+		</div>
+
+		<div class="form-group">
+			<label for="end_date" class="form-label">End Date (optional)</label>
+			<input type="date" id="end_date" name="end_date" class="form-input">
+		</div>
+
+		{% if providers %}
+		<div class="form-group">
+			<label for="prescribed_by" class="form-label">Prescribed By</label>
+			<select id="prescribed_by" name="prescribed_by" class="form-select">
+				<option value="">Select provider</option>
+				{% for provider in providers %}
+				<option value="{{ provider.name }}">{{ provider.name }}</option>
+				{% endfor %}
+			</select>
+		</div>
+		{% else %}
+		<div class="form-group">
+			<label for="prescribed_by" class="form-label">Prescribed By</label>
+			<input type="text" id="prescribed_by" name="prescribed_by" class="form-input"
+				placeholder="e.g. Dr. Sarah Patel">
+		</div>
+		{% endif %}
+
+		<div class="form-group">
+			<label for="instructions" class="form-label">Instructions</label>
+			<textarea id="instructions" name="instructions" class="form-textarea"
+				placeholder="e.g. Take with food, avoid alcohol..."></textarea>
+		</div>
+
+		<div class="form-group">
+			<label for="side_effects" class="form-label">Side Effects</label>
+			<textarea id="side_effects" name="side_effects" class="form-textarea"
+				placeholder="e.g. Nausea, dizziness, dry mouth..."></textarea>
+		</div>
+
+		<div class="form-actions">
+			<button type="submit" class="btn btn-primary">Add Medication</button>
+			<a href="/patient/{{ patient.id }}/medications" class="btn btn-outline">Cancel</a>
+		</div>
+	</form>
+</div>
+{% endblock %}

@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block title %}Coordinator Board — CareLoop{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">Coordinator Board</h1>
+    <p class="page-subtitle">Care coordination oversight</p>
+</div>
+
+<div class="stats-row">
+    <div class="stat-card">
+        <div class="stat-number">{{ total_patients }}</div>
+        <div class="stat-label">Total Patients</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ overdue_count }}</div>
+        <div class="stat-label">Overdue Items</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ pending_review_count }}</div>
+        <div class="stat-label">Pending Reviews</div>
+    </div>
+</div>
+
+{% if overdue_tasks %}
+<section class="section">
+    <h2 class="section-title">Overdue Tasks (48h+)</h2>
+    <div class="tasks-list">
+        {% for task in overdue_tasks %}
+        <div class="task-card">
+            <div class="task-header">
+                <span class="task-title">{{ task.title }}</span>
+                <span class="badge badge-{{ task.owner }}">{{ task.owner }}</span>
+            </div>
+            <div class="task-meta">
+                Patient: {{ task.patient_name }} · Due: {{ task.due_date[:16] }}
+            </div>
+            {% if task.description %}
+            <div class="task-desc">{{ task.description }}</div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+{% if outreach_queue %}
+<section class="section">
+    <h2 class="section-title">Patient Outreach Queue</h2>
+    <div class="tasks-list">
+        {% for task in outreach_queue %}
+        <div class="task-card">
+            <div class="task-header">
+                <span class="task-title">{{ task.title }}</span>
+                <span class="badge badge-patient">patient action</span>
+            </div>
+            <div class="task-meta">Patient: {{ task.patient_name }} · Created: {{ task.created_at[:10] }}</div>
+            {% if task.description %}
+            <div class="task-desc">{{ task.description }}</div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+{% if missing_documents %}
+<section class="section">
+    <h2 class="section-title">Missing Documents</h2>
+    <div class="tasks-list">
+        {% for entry in missing_documents %}
+        <div class="task-card">
+            <div class="task-header">
+                <span class="task-title">{{ entry.patient_name }}</span>
+                <span class="badge">no documents</span>
+            </div>
+            <div class="form-actions" style="margin-top: 0.5rem;">
+                <a href="/patient/{{ entry.patient_id }}/documents/upload" class="btn btn-outline" style="font-size: 0.8rem;">Upload</a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+{% if escalation_queue %}
+<section class="section">
+    <h2 class="section-title">Escalation Queue</h2>
+    <div class="tasks-list">
+        {% for task in escalation_queue %}
+        <div class="task-card">
+            <div class="task-header">
+                <span class="task-title">{{ task.title }}</span>
+                <span class="badge badge-provider">overdue</span>
+            </div>
+            <div class="task-meta">
+                Patient: {{ task.patient_name }} · Due: {{ task.due_date[:16] }}
+            </div>
+            {% if task.description %}
+            <div class="task-desc">{{ task.description }}</div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+<div class="action-bar">
+    <a href="/dashboard/provider" class="btn btn-secondary">Provider Dashboard</a>
+    <a href="/analytics" class="btn btn-outline">Analytics</a>
+</div>
+{% endblock %}

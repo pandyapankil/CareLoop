@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Documents — {{ patient.name }} — CareLoop{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <a href="/patient/{{ patient.id }}" class="back-link">← Back to {{ patient.name }}</a>
+    <h1 class="page-title">Documents</h1>
+    <p class="page-subtitle">{{ patient.name }}'s uploaded documents</p>
+</div>
+
+<div class="action-bar">
+    <a href="/patient/{{ patient.id }}/documents/upload" class="btn btn-primary">Upload Document</a>
+    <div class="filter-group">
+        <button class="btn btn-outline filter-btn active" data-filter="all">All</button>
+        {% for val, label in categories %}
+        <button class="btn btn-outline filter-btn" data-filter="{{ val }}">{{ label }}</button>
+        {% endfor %}
+    </div>
+</div>
+
+{% if documents %}
+<div class="documents-grid">
+    {% for doc in documents %}
+    <a href="/document/{{ doc.id }}" class="task-card document-card" data-category="{{ doc.category }}">
+        <div class="task-header">
+            <span class="doc-icon">
+                {% if doc.file_type in ['.jpg', '.jpeg', '.png'] %}🖼️
+                {% elif doc.file_type == '.pdf' %}📄
+                {% elif doc.file_type in ['.doc', '.docx'] %}📝
+                {% else %}📎{% endif %}
+            </span>
+            <span class="task-title">{{ doc.original_filename }}</span>
+        </div>
+        <div class="task-meta">
+            <span class="badge">{{ doc.category.replace('_', ' ') | title }}</span>
+            <span class="badge badge-{{ doc.status }}">{{ doc.status }}</span>
+        </div>
+        <div class="task-meta">
+            <span>{{ (doc.file_size / 1024) | round(1) }} KB</span>
+            <span>{{ doc.created_at[:16] }}</span>
+        </div>
+        {% if doc.description %}
+        <div class="task-desc">{{ doc.description }}</div>
+        {% endif %}
+        {% if doc.reviewed_by %}
+        <div class="task-meta">Reviewed by {{ doc.reviewed_by }} at {{ doc.reviewed_at[:16] }}</div>
+        {% endif %}
+    </a>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+    <div class="empty-icon">📂</div>
+    <h3>No documents yet</h3>
+    <p>Upload a document to get started.</p>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const filter = btn.dataset.filter;
+            document.querySelectorAll('.document-card').forEach(card => {
+                card.style.display = (filter === 'all' || card.dataset.category === filter) ? '' : 'none';
+            });
+        });
+    });
+</script>
+{% endblock %}

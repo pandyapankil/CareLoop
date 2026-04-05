@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard — CareLoop{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">Admin Dashboard</h1>
+    <p class="page-subtitle">System overview and management</p>
+</div>
+
+<div class="stats-row">
+    <div class="stat-card">
+        <div class="stat-number">{{ user_count }}</div>
+        <div class="stat-label">Users</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ patient_count }}</div>
+        <div class="stat-label">Patients</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ encounter_count }}</div>
+        <div class="stat-label">Encounters</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ analysis_count }}</div>
+        <div class="stat-label">AI Analyses</div>
+    </div>
+</div>
+
+{% if recent_activity %}
+<section class="section">
+    <h2 class="section-title">Recent Activity</h2>
+    <div class="task-card">
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <th style="text-align: left; padding: 0.5rem;">Time</th>
+                    <th style="text-align: left; padding: 0.5rem;">Action</th>
+                    <th style="text-align: left; padding: 0.5rem;">Resource</th>
+                    <th style="text-align: left; padding: 0.5rem;">Details</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for entry in recent_activity %}
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <td style="padding: 0.5rem;">{{ entry.created_at[:16] }}</td>
+                    <td style="padding: 0.5rem;">{{ entry.action }}</td>
+                    <td style="padding: 0.5rem;">{{ entry.resource_type or '—' }}</td>
+                    <td style="padding: 0.5rem;">{{ (entry.details or '')[:80] }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endif %}
+
+{% if users %}
+<section class="section">
+    <h2 class="section-title">User Management</h2>
+    <div class="documents-grid">
+        {% for u in users %}
+        <div class="task-card">
+            <div class="task-header">
+                <span class="task-title">{{ u.name }}</span>
+                <span class="badge">{{ u.role }}</span>
+                {% if u.is_active %}
+                <span class="badge badge-reviewed">active</span>
+                {% else %}
+                <span class="badge badge-rejected">inactive</span>
+                {% endif %}
+            </div>
+            <div class="task-meta">{{ u.email }}</div>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+<div class="action-bar">
+    <a href="/dashboard/provider" class="btn btn-secondary">Provider Dashboard</a>
+    <a href="/dashboard/coordinator" class="btn btn-outline">Coordinator Board</a>
+    <a href="/analytics" class="btn btn-outline">Analytics</a>
+</div>
+{% endblock %}

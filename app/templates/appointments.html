@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Appointments — {{ patient.name }} — CareLoop{% endblock %}
+
+{% block content %}
+<div class="page-header">
+	<a href="/patient/{{ patient.id }}" class="back-link">← Back to {{ patient.name }}</a>
+	<div>
+		<h1 class="page-title">Appointments</h1>
+		<p class="page-subtitle">{{ patient.name }}'s upcoming and past appointments</p>
+	</div>
+</div>
+
+<div class="action-bar">
+	<a href="/patient/{{ patient.id }}/appointments/new" class="btn btn-primary">+ Schedule Appointment</a>
+</div>
+
+{% if appointments %}
+<section class="section">
+	<h2 class="section-title">All Appointments</h2>
+	<div class="tasks-list">
+		{% for apt in appointments %}
+		<a href="/appointment/{{ apt.id }}" class="task-card" style="text-decoration:none;color:inherit;">
+			<div class="task-header">
+				<span class="task-title">{{ apt.title }}</span>
+				<span class="badge badge-{% if apt.status == 'scheduled' %}patient{% elif apt.status == 'confirmed' %}provider{% elif apt.status == 'completed' %}ai{% else %}qa{% endif %}">
+					{{ apt.status }}
+				</span>
+			</div>
+			<div class="task-meta">
+				{{ apt.scheduled_at[:16] if apt.scheduled_at else 'No date' }}
+				&middot; {{ apt.countdown }}
+			</div>
+			{% if apt.location %}
+			<div class="task-meta">
+				📍 {% if apt.location_url %}<a href="{{ apt.location_url }}" target="_blank">{{ apt.location }}</a>{% else %}{{ apt.location }}{% endif %}
+			</div>
+			{% endif %}
+			{% if apt.provider_name %}
+			<div class="task-meta">Provider: {{ apt.provider_name }}</div>
+			{% endif %}
+			{% if apt.checklist_total > 0 %}
+			<div class="task-meta">
+				Checklist: {{ apt.checklist_completed }}/{{ apt.checklist_total }} items complete
+			</div>
+			{% endif %}
+		</a>
+		{% endfor %}
+	</div>
+</section>
+{% else %}
+<div class="empty-state">
+	<div class="empty-icon">📅</div>
+	<h3>No appointments scheduled</h3>
+	<p>Click "Schedule Appointment" to create one.</p>
+</div>
+{% endif %}
+{% endblock %}

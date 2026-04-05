@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Provider Dashboard — CareLoop{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">Provider Dashboard</h1>
+    <p class="page-subtitle">Your care coordination overview</p>
+</div>
+
+<div class="stats-row">
+    <div class="stat-card">
+        <div class="stat-number">{{ overdue_tasks }}</div>
+        <div class="stat-label">Overdue Tasks</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ pending_reviews }}</div>
+        <div class="stat-label">Pending Reviews</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ unanswered_messages }}</div>
+        <div class="stat-label">Unanswered Messages</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ upcoming_appointments | length }}</div>
+        <div class="stat-label">Upcoming Appointments</div>
+    </div>
+</div>
+
+{% if upcoming_appointments %}
+<section class="section">
+    <h2 class="section-title">Upcoming Appointments (7 days)</h2>
+    <div class="tasks-list">
+        {% for appt in upcoming_appointments %}
+        <div class="task-card">
+            <div class="task-header">
+                <span class="task-title">{{ appt.title }}</span>
+                <span class="badge">{{ appt.patient_name }}</span>
+            </div>
+            <div class="task-meta">{{ appt.scheduled_at[:16] }} · {{ appt.duration_minutes }} min</div>
+            {% if appt.location %}
+            <div class="task-desc">{{ appt.location }}</div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+<section class="section">
+    <h2 class="section-title">Patient Snapshots</h2>
+    {% if patient_snapshots %}
+    <div class="documents-grid">
+        {% for ps in patient_snapshots %}
+        <a href="/patient/{{ ps.id }}" class="task-card" style="text-decoration: none;">
+            <div class="task-header">
+                <span class="task-title">{{ ps.name }}</span>
+                <span class="badge">{{ ps.condition }}</span>
+            </div>
+            <div class="task-meta">
+                {% if ps.latest_activity %}Last activity: {{ ps.latest_activity[:10] }}{% else %}No activity{% endif %}
+            </div>
+            {% if ps.pending_tasks > 0 %}
+            <div class="task-meta">
+                <span class="badge badge-provider">{{ ps.pending_tasks }} pending tasks</span>
+            </div>
+            {% endif %}
+        </a>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-icon">🏥</div>
+        <h3>No patients</h3>
+    </div>
+    {% endif %}
+</section>
+
+<div class="action-bar">
+    <a href="/dashboard/coordinator" class="btn btn-secondary">Coordinator Board</a>
+    <a href="/analytics" class="btn btn-outline">Analytics</a>
+</div>
+{% endblock %}

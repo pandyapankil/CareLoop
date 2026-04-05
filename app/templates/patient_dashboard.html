@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}My Dashboard — CareLoop{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">My Dashboard</h1>
+    <p class="page-subtitle">Welcome back, {{ patient.name }}</p>
+</div>
+
+<div class="stats-row">
+    {% if countdown %}
+    <div class="stat-card">
+        <div class="stat-number">{{ countdown.days }}d {{ countdown.hours }}h</div>
+        <div class="stat-label">Next: {{ countdown.label }}</div>
+    </div>
+    {% else %}
+    <div class="stat-card">
+        <div class="stat-number">—</div>
+        <div class="stat-label">No upcoming appointments</div>
+    </div>
+    {% endif %}
+    <div class="stat-card">
+        <div class="stat-number">{{ pending_tasks }}</div>
+        <div class="stat-label">Pending Tasks</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ overdue_tasks }}</div>
+        <div class="stat-label">Overdue Alerts</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ medications | length }}</div>
+        <div class="stat-label">Active Medications</div>
+    </div>
+</div>
+
+{% if medications %}
+<section class="section">
+    <h2 class="section-title">Medication Schedule</h2>
+    <div class="tasks-list">
+        {% for med in medications %}
+        <div class="task-card">
+            <div class="task-header">
+                <span class="task-title">{{ med.name }}</span>
+                <span class="badge">{{ med.status }}</span>
+            </div>
+            <div class="task-meta">{{ med.dosage }} · {{ med.frequency }}</div>
+            {% if med.instructions %}
+            <div class="task-desc">{{ med.instructions }}</div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+{% if symptom_trend %}
+<section class="section">
+    <h2 class="section-title">Symptom Trends</h2>
+    <div class="task-card">
+        <svg viewBox="0 0 400 150" style="width: 100%; height: auto;">
+            <line x1="40" y1="10" x2="40" y2="130" stroke="var(--text-muted)" stroke-width="1"/>
+            <line x1="40" y1="130" x2="390" y2="130" stroke="var(--text-muted)" stroke-width="1"/>
+            <text x="10" y="15" fill="var(--text-muted)" font-size="10">10</text>
+            <text x="10" y="70" fill="var(--text-muted)" font-size="10">5</text>
+            <text x="10" y="135" fill="var(--text-muted)" font-size="10">0</text>
+
+            {% for entry in symptom_trend %}
+            <text x="{{ 50 + loop.index0 * 50 }}" y="145" fill="var(--text-muted)" font-size="9">{{ entry.date[5:] }}</text>
+            {% endfor %}
+
+            <polyline fill="none" stroke="#ef4444" stroke-width="2"
+                points="{% for e in symptom_trend %}{{ 50 + loop.index0 * 50 }},{{ 130 - e.pain * 12 }}{% if not loop.last %} {% endif %}{% endfor %}"/>
+            <polyline fill="none" stroke="#3b82f6" stroke-width="2"
+                points="{% for e in symptom_trend %}{{ 50 + loop.index0 * 50 }},{{ 130 - e.mood * 12 }}{% if not loop.last %} {% endif %}{% endfor %}"/>
+            <polyline fill="none" stroke="#22c55e" stroke-width="2"
+                points="{% for e in symptom_trend %}{{ 50 + loop.index0 * 50 }},{{ 130 - e.sleep * 12 }}{% if not loop.last %} {% endif %}{% endfor %}"/>
+
+            <circle cx="370" cy="20" r="4" fill="#ef4444"/>
+            <text x="378" y="24" fill="var(--text-muted)" font-size="9">Pain</text>
+            <circle cx="370" cy="35" r="4" fill="#3b82f6"/>
+            <text x="378" y="39" fill="var(--text-muted)" font-size="9">Mood</text>
+            <circle cx="370" cy="50" r="4" fill="#22c55e"/>
+            <text x="378" y="54" fill="var(--text-muted)" font-size="9">Sleep</text>
+        </svg>
+    </div>
+</section>
+{% endif %}
+
+<div class="action-bar">
+    <a href="/patient/{{ patient.id }}/checkin" class="btn btn-primary">Check-in</a>
+    <a href="/patient/{{ patient.id }}/ask" class="btn btn-accent">Ask AI</a>
+    <a href="/patient/{{ patient.id }}" class="btn btn-secondary">My Timeline</a>
+    <a href="/patient/{{ patient.id }}/documents" class="btn btn-outline">Documents</a>
+    <a href="/settings" class="btn btn-outline">Settings</a>
+</div>
+{% endblock %}

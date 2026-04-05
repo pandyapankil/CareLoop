@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block title %}Settings — CareLoop{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">Settings</h1>
+    <p class="page-subtitle">Manage your preferences</p>
+</div>
+
+<section class="section">
+    <h2 class="section-title">Profile</h2>
+    <div class="form-card">
+        <form action="/settings/profile" method="POST">
+            <div class="form-group">
+                <label for="name" class="form-label">Name</label>
+                <input type="text" id="name" name="name" class="form-input"
+                    value="{{ user_name }}" required>
+            </div>
+            {% if user_email %}
+            <div class="form-group">
+                <label class="form-label">Email</label>
+                <input type="email" class="form-input" value="{{ user_email }}" disabled>
+            </div>
+            {% endif %}
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Save Profile</button>
+            </div>
+        </form>
+    </div>
+</section>
+
+<section class="section">
+    <h2 class="section-title">Notification Preferences</h2>
+    <div class="form-card">
+        <form action="/settings/notifications" method="POST">
+            <div class="form-group" style="display: flex; align-items: center; justify-content: space-between;">
+                <label class="form-label" style="margin-bottom: 0;">Email Notifications</label>
+                <label class="toggle-switch">
+                    <input type="checkbox" name="email" {% if notification_prefs.email %}checked{% endif %}>
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+            <div class="form-group" style="display: flex; align-items: center; justify-content: space-between;">
+                <label class="form-label" style="margin-bottom: 0;">Push Notifications</label>
+                <label class="toggle-switch">
+                    <input type="checkbox" name="push" {% if notification_prefs.push %}checked{% endif %}>
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+            <div class="form-group" style="display: flex; align-items: center; justify-content: space-between;">
+                <label class="form-label" style="margin-bottom: 0;">Appointment Reminders</label>
+                <label class="toggle-switch">
+                    <input type="checkbox" name="appointments" {% if notification_prefs.appointments %}checked{% endif %}>
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+            <div class="form-group" style="display: flex; align-items: center; justify-content: space-between;">
+                <label class="form-label" style="margin-bottom: 0;">Medication Reminders</label>
+                <label class="toggle-switch">
+                    <input type="checkbox" name="medications" {% if notification_prefs.medications %}checked{% endif %}>
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+            <div class="form-group" style="display: flex; align-items: center; justify-content: space-between;">
+                <label class="form-label" style="margin-bottom: 0;">Task Notifications</label>
+                <label class="toggle-switch">
+                    <input type="checkbox" name="tasks" {% if notification_prefs.tasks %}checked{% endif %}>
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+            <div class="form-group" style="display: flex; align-items: center; justify-content: space-between;">
+                <label class="form-label" style="margin-bottom: 0;">Message Notifications</label>
+                <label class="toggle-switch">
+                    <input type="checkbox" name="messages" {% if notification_prefs.messages %}checked{% endif %}>
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Save Preferences</button>
+            </div>
+        </form>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<style>
+    .toggle-switch {
+        position: relative;
+        display: inline-block;
+        width: 48px;
+        height: 26px;
+    }
+    .toggle-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+    .toggle-slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background-color: var(--text-muted);
+        transition: 0.3s;
+        border-radius: 26px;
+    }
+    .toggle-slider:before {
+        position: absolute;
+        content: "";
+        height: 20px;
+        width: 20px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: 0.3s;
+        border-radius: 50%;
+    }
+    .toggle-switch input:checked + .toggle-slider {
+        background-color: var(--accent);
+    }
+    .toggle-switch input:checked + .toggle-slider:before {
+        transform: translateX(22px);
+    }
+</style>
+{% endblock %}

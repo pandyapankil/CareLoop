@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}New Appointment — {{ patient.name }} — CareLoop{% endblock %}
+
+{% block content %}
+<div class="page-header">
+	<a href="/patient/{{ patient.id }}/appointments" class="back-link">← All Appointments</a>
+	<h1 class="page-title">Schedule Appointment</h1>
+	<p class="page-subtitle">Create a new appointment for {{ patient.name }}</p>
+</div>
+
+<div class="form-card">
+	<form action="/patient/{{ patient.id }}/appointments/new" method="POST" id="appointment-form">
+		<div class="form-group">
+			<label for="title" class="form-label">Title</label>
+			<input type="text" id="title" name="title" class="form-input"
+				placeholder="e.g. Cardiology Follow-up" required>
+		</div>
+
+		<div class="form-group">
+			<label for="description" class="form-label">Description</label>
+			<textarea id="description" name="description" class="form-textarea"
+				placeholder="Additional details about the appointment..."></textarea>
+		</div>
+
+		<div class="form-group">
+			<label for="location" class="form-label">Location</label>
+			<input type="text" id="location" name="location" class="form-input"
+				placeholder="e.g. City Hospital, Room 204">
+		</div>
+
+		<div class="form-group">
+			<label for="location_url" class="form-label">Location URL (Google Maps link)</label>
+			<input type="url" id="location_url" name="location_url" class="form-input"
+				placeholder="https://maps.google.com/...">
+		</div>
+
+		<div class="form-group">
+			<label for="scheduled_at" class="form-label">Date &amp; Time</label>
+			<input type="datetime-local" id="scheduled_at" name="scheduled_at" class="form-input" required>
+		</div>
+
+		<div class="form-group">
+			<label for="duration_minutes" class="form-label">Duration (minutes)</label>
+			<input type="number" id="duration_minutes" name="duration_minutes" class="form-input"
+				value="30" min="5" max="480">
+		</div>
+
+		{% if providers %}
+		<div class="form-group">
+			<label for="provider_id" class="form-label">Provider</label>
+			<select id="provider_id" name="provider_id" class="form-select">
+				<option value="">Select provider</option>
+				{% for provider in providers %}
+				<option value="{{ provider.id }}">{{ provider.name }}{% if provider.provider_role %} ({{ provider.provider_role }}){% endif %}</option>
+				{% endfor %}
+			</select>
+		</div>
+		{% endif %}
+
+		<div class="form-group">
+			<label class="form-label">Prep Checklist Items</label>
+			<div id="checklist-items">
+				<div class="checklist-entry" style="display:flex;gap:8px;margin-bottom:8px;">
+					<input type="text" name="checklist_item" class="form-input"
+						placeholder="e.g. Bring insurance card" style="flex:1;">
+					<button type="button" class="btn btn-danger" onclick="this.parentElement.remove()" style="min-width:auto;">✕</button>
+				</div>
+			</div>
+			<button type="button" class="btn btn-outline" onclick="addChecklistItem()">+ Add Checklist Item</button>
+		</div>
+
+		<div class="form-actions">
+			<button type="submit" class="btn btn-primary">Schedule Appointment</button>
+			<a href="/patient/{{ patient.id }}/appointments" class="btn btn-outline">Cancel</a>
+		</div>
+	</form>
+</div>
+
+<script>
+function addChecklistItem() {
+	var container = document.getElementById('checklist-items');
+	var entry = document.createElement('div');
+	entry.className = 'checklist-entry';
+	entry.style.cssText = 'display:flex;gap:8px;margin-bottom:8px;';
+	entry.innerHTML = '<input type="text" name="checklist_item" class="form-input" placeholder="e.g. Bring insurance card" style="flex:1;">' +
+		'<button type="button" class="btn btn-danger" onclick="this.parentElement.remove()" style="min-width:auto;">✕</button>';
+	container.appendChild(entry);
+}
+
+document.getElementById('appointment-form').addEventListener('submit', function(e) {
+	var items = document.querySelectorAll('input[name="checklist_item"]');
+	var checklist = [];
+	items.forEach(function(input) {
+		if (input.value.trim()) {
+			checklist.push({ item: input.value.trim() });
+		}
+	});
+	var hidden = document.createElement('input');
+	hidden.type = 'hidden';
+	hidden.name = 'prep_checklist';
+	hidden.value = JSON.stringify(checklist);
+	this.appendChild(hidden);
+});
+</script>
+{% endblock %}

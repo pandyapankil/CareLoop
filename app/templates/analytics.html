@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Analytics — CareLoop{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">Analytics</h1>
+    <p class="page-subtitle">Care coordination metrics and insights</p>
+</div>
+
+<div class="stats-row">
+    <div class="stat-card">
+        <div class="stat-number">{{ on_time_rate }}%</div>
+        <div class="stat-label">On-time Completion</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ overdue_rate }}%</div>
+        <div class="stat-label">Overdue Rate</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ encounters_per_patient }}</div>
+        <div class="stat-label">Encounters / Patient</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ checkin_frequency }}</div>
+        <div class="stat-label">Check-ins / Patient</div>
+    </div>
+</div>
+
+<div class="stats-row">
+    <div class="stat-card">
+        <div class="stat-number">{{ analyses_run }}</div>
+        <div class="stat-label">AI Analyses Run</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ qa_exchanges }}</div>
+        <div class="stat-label">Q&A Exchanges</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ total_tasks }}</div>
+        <div class="stat-label">Total Tasks</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ risk_high + risk_medium + risk_low }}</div>
+        <div class="stat-label">Risk Flags</div>
+    </div>
+</div>
+
+<section class="section">
+    <h2 class="section-title">Task Completion by Owner</h2>
+    <div class="task-card">
+        <svg viewBox="0 0 400 120" style="width: 100%; height: auto;">
+            <line x1="10" y1="100" x2="390" y2="100" stroke="var(--text-muted)" stroke-width="1"/>
+            {% for cr in completion_rates %}
+            <rect x="{{ 30 + loop.index0 * 150 }}" y="{{ 100 - (cr.rate / max_completion) * 80 }}" width="80" height="{{ (cr.rate / max_completion) * 80 }}" fill="var(--accent)" rx="4"/>
+            <text x="{{ 70 + loop.index0 * 150 }}" y="95" fill="var(--text-muted)" font-size="11" text-anchor="middle">{{ cr.rate }}%</text>
+            <text x="{{ 70 + loop.index0 * 150 }}" y="115" fill="var(--text-muted)" font-size="11" text-anchor="middle">{{ cr.owner }}</text>
+            {% endfor %}
+        </svg>
+    </div>
+</section>
+
+<section class="section">
+    <h2 class="section-title">Risk Flag Distribution</h2>
+    <div class="task-card">
+        <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+            <span style="color: #ef4444; font-weight: 600;">High: {{ risk_high }}</span>
+            <span style="color: #eab308; font-weight: 600;">Medium: {{ risk_medium }}</span>
+            <span style="color: #22c55e; font-weight: 600;">Low: {{ risk_low }}</span>
+        </div>
+        <svg viewBox="0 0 400 40" style="width: 100%; height: auto;">
+            {% set total = risk_high + risk_medium + risk_low %}
+            {% if total > 0 %}
+            <rect x="0" y="0" width="{{ (risk_high / total) * 400 }}" height="40" fill="#ef4444" rx="4"/>
+            <rect x="{{ (risk_high / total) * 400 }}" y="0" width="{{ (risk_medium / total) * 400 }}" height="40" fill="#eab308"/>
+            <rect x="{{ ((risk_high + risk_medium) / total) * 400 }}" y="0" width="{{ (risk_low / total) * 400 }}" height="40" fill="#22c55e" rx="4"/>
+            {% else %}
+            <rect x="0" y="0" width="400" height="40" fill="var(--text-muted)" rx="4" opacity="0.3"/>
+            <text x="200" y="25" fill="var(--text-muted)" font-size="12" text-anchor="middle">No risk flags</text>
+            {% endif %}
+        </svg>
+    </div>
+</section>
+{% endblock %}

@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}Care Team — {{ patient.name }} — CareLoop{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <a href="/patient/{{ patient.id }}" class="back-link">← Back to {{ patient.name }}</a>
+    <h1 class="page-title">Care Team</h1>
+    <p class="page-subtitle">{{ patient.name }}'s care team</p>
+</div>
+
+<div class="action-bar">
+    <a href="/patient/{{ patient.id }}/care-team/add" class="btn btn-primary">Add Team Member</a>
+</div>
+
+{% if show_add_form or providers %}
+{% if show_add_form %}
+<section class="section">
+    <h2 class="section-title">Add Team Member</h2>
+    <div class="form-card">
+        <form action="/patient/{{ patient.id }}/care-team/add" method="POST">
+            <div class="form-group">
+                <label for="provider_id" class="form-label">Provider</label>
+                <select id="provider_id" name="provider_id" class="form-select" required>
+                    <option value="">Select a provider...</option>
+                    {% for p in providers %}
+                    <option value="{{ p.id }}">{{ p.name }} ({{ p.role }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="provider_name" class="form-label">Provider Name</label>
+                <input type="text" id="provider_name" name="provider_name" class="form-input" required>
+            </div>
+            <div class="form-group">
+                <label for="provider_role" class="form-label">Role</label>
+                <select id="provider_role" name="provider_role" class="form-select" required>
+                    <option value="physician">Physician</option>
+                    <option value="nurse">Nurse</option>
+                    <option value="specialist">Specialist</option>
+                    <option value="coordinator">Coordinator</option>
+                    <option value="therapist">Therapist</option>
+                    <option value="pharmacist">Pharmacist</option>
+                </select>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Add Member</button>
+                <a href="/patient/{{ patient.id }}/care-team" class="btn btn-outline">Cancel</a>
+            </div>
+        </form>
+    </div>
+</section>
+{% endif %}
+{% endif %}
+
+{% if members %}
+<section class="section">
+    <h2 class="section-title">Team Members</h2>
+    <div class="documents-grid">
+        {% for member in members %}
+        <div class="task-card">
+            <div class="task-header">
+                <span class="task-title">{{ member.provider_name }}</span>
+                {% if member.is_primary %}
+                <span class="badge badge-ai">Primary</span>
+                {% endif %}
+                <span class="badge">{{ member.provider_role }}</span>
+            </div>
+            <div class="task-meta">
+                Added {{ member.created_at[:10] }}
+            </div>
+            <div class="form-actions" style="margin-top: 0.5rem;">
+                {% if not member.is_primary %}
+                <form action="/care-team/{{ member.id }}/set-primary" method="POST" style="display:inline">
+                    <button type="submit" class="btn btn-outline" style="font-size: 0.8rem;">Set Primary</button>
+                </form>
+                {% endif %}
+                <form action="/care-team/{{ member.id }}/remove" method="POST" style="display:inline">
+                    <button type="submit" class="btn btn-danger" style="font-size: 0.8rem;">Remove</button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% else %}
+<div class="empty-state">
+    <div class="empty-icon">👥</div>
+    <h3>No care team members</h3>
+    <p>Add a provider to build the care team.</p>
+</div>
+{% endif %}
+{% endblock %}

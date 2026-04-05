@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Compose Message — CareLoop{% endblock %}
+
+{% block content %}
+<div class="page-header">
+	<a href="/messages" class="back-link">&larr; Back to Messages</a>
+	<h1 class="page-title">Compose Message</h1>
+	<p class="page-subtitle">Send a message to a care team member</p>
+</div>
+
+<div class="form-card">
+	<form action="/messages/compose" method="POST">
+		<div class="form-group">
+			<label for="receiver_id" class="form-label">Recipient</label>
+			<select id="receiver_id" name="receiver_id" class="form-select" required>
+				<option value="">Select a recipient...</option>
+				{% for user in users %}
+				<option value="{{ user.id }}">{{ user.name }} ({{ user.role }})</option>
+				{% endfor %}
+			</select>
+		</div>
+
+		<div class="form-group">
+			<label for="patient_id" class="form-label">Patient Context (optional)</label>
+			<select id="patient_id" name="patient_id" class="form-select">
+				<option value="">No specific patient</option>
+				{% for patient in patients %}
+				<option value="{{ patient.id }}">{{ patient.name }}</option>
+				{% endfor %}
+			</select>
+		</div>
+
+		<div class="form-group">
+			<label for="subject" class="form-label">Subject</label>
+			<input type="text" id="subject" name="subject" class="form-input" placeholder="Message subject" required>
+		</div>
+
+		<div class="form-group">
+			<label for="body" class="form-label">Message</label>
+			<textarea id="body" name="body" class="form-textarea" rows="6" placeholder="Type your message here..." required></textarea>
+		</div>
+
+		<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+			<div class="form-group">
+				<label for="urgency" class="form-label">Urgency</label>
+				<select id="urgency" name="urgency" class="form-select">
+					<option value="normal">Normal</option>
+					<option value="important">Important</option>
+					<option value="urgent">Urgent</option>
+				</select>
+			</div>
+
+			<div class="form-group">
+				<label for="category" class="form-label">Category</label>
+				<select id="category" name="category" class="form-select">
+					<option value="general">General</option>
+					<option value="clinical">Clinical</option>
+					<option value="administrative">Administrative</option>
+					<option value="coordination">Coordination</option>
+				</select>
+			</div>
+		</div>
+
+		<div class="form-actions">
+			<button type="submit" class="btn btn-primary">Send Message</button>
+			<a href="/messages" class="btn btn-outline">Cancel</a>
+		</div>
+	</form>
+</div>
+{% endblock %}
