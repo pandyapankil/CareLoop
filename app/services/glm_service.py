@@ -15,11 +15,12 @@ from typing import Optional
 
 from app.database import get_db
 
-# ─── Configuration ───────────────────────────────────────────
-GLM_API_KEY = os.getenv("GLM_API_KEY", "")
-GLM_API_URL = os.getenv("GLM_API_URL", "https://api.z.ai/api/paas/v4/chat/completions")
-GLM_MODEL = os.getenv("GLM_MODEL", "glm-5.1")
+# ─── Configuration (read lazily so .env is loaded first) ─────
 REQUEST_TIMEOUT = 60.0
+
+def _api_key(): return os.getenv("GLM_API_KEY", "")
+def _api_url(): return os.getenv("GLM_API_URL", "https://api.z.ai/api/paas/v4/chat/completions")
+def _model():   return os.getenv("GLM_MODEL", "glm-5.1")
 
 
 # ─── JSON Extraction ────────────────────────────────────────
@@ -106,16 +107,18 @@ def get_mock_qa_answer(question: str) -> str:
 
 # ─── GLM API Call ────────────────────────────────────────────
 async def call_glm(system_prompt: str, user_prompt: str) -> tuple[str, bool]:
-    """Call GLM 5.1 API. Returns (response_text, success_bool)."""
-    if not GLM_API_KEY:
+    """Call GLM 5.1 API with retry for rate limits. Returns (response_text, success_bool)."""
+    import asyncio
+    api_key = _api_key()
+    if not api_key:
         return "", False
 
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {GLM_API_KEY}",
+        "Authorization": f"Bearer {api_key}",
     }
     payload = {
-        "model": GLM_MODEL,
+        "model": _model(),
         "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
@@ -124,16 +127,37 @@ async def call_glm(system_prompt: str, user_prompt: str) -> tuple[str, bool]:
         "max_tokens": 4096,
     }
 
-    try:
-        async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
-            response = await client.post(GLM_API_URL, json=payload, headers=headers)
-            response.raise_for_status()
-            data = response.json()
-            content = data["choices"][0]["message"]["content"]
-            return content, True
-    except Exception as e:
-        print(f"[CareLoop] GLM API error: {e}")
-        return str(e), False
+    max_retries = 3
+    retry_delays = [5, 15, 30]  # seconds
+
+    for attempt in range(max_retries):
+        try:
+            async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
+                response = await client.post(_api_url(), json=payload, headers=headers)
+
+                if response.status_code == 429:
+                    delay = retry_delays[attempt] if attempt < len(retry_delays) else 30
+                    print(f"[CareLoop] Rate limited (429), retry {attempt+1}/{max_retries} in {delay}s...")
+                    await asyncio.sleep(delay)
+                    continue
+
+                response.raise_for_status()
+                data = response.json()
+                content = data["choices"][0]["message"]["content"]
+                return content, True
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 429 and attempt < max_retries - 1:
+                delay = retry_delays[attempt]
+                print(f"[CareLoop] Rate limited (429), retry {attempt+1}/{max_retries} in {delay}s...")
+                await asyncio.sleep(delay)
+                continue
+            print(f"[CareLoop] GLM API error: {e}")
+            return str(e), False
+        except Exception as e:
+            print(f"[CareLoop] GLM API error: {e}")
+            return str(e), False
+
+    return "Rate limit exceeded after retries", False
 
 
 # ─── Analysis Prompts ────────────────────────────────────────
@@ -257,7 +281,7 @@ Analyze these encounters and produce the structured JSON output."""
              json.dumps(parsed.get("tasks", [])),
              raw_response,
              f"SYSTEM:\n{ANALYSIS_SYSTEM_PROMPT}\n\nUSER:\n{user_prompt}",
-             GLM_MODEL,
+             _model(),
              datetime.now(timezone.utc).isoformat())
         )
 
@@ -396,7 +420,7 @@ Please answer this question based on the care context above."""
         db.execute(
             """INSERT INTO qa_exchanges (id, patient_id, question, answer, context_used, model, created_at)
                VALUES (?, ?, ?, ?, ?, ?, ?)""",
-            (qa_id, patient_id, question, answer, context[:2000], GLM_MODEL,
+            (qa_id, patient_id, question, answer, context[:2000], _model(),
              datetime.now(timezone.utc).isoformat())
         )
 
