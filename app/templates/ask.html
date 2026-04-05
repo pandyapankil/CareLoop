@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Ask CareLoop AI — {{ patient.name }} — CareLoop{% endblock %}
+
+{% block content %}
+<div class="page-header">
+	<a href="/patient/{{ patient.id }}" class="back-link">← Back to {{ patient.name }}</a>
+	<h1 class="page-title">❓ Ask CareLoop AI</h1>
+	<p class="page-subtitle">Ask a question about {{ patient.name }}'s care</p>
+</div>
+
+<div class="form-card">
+	<form action="/patient/{{ patient.id }}/ask" method="POST" id="qa-form">
+		<div class="form-group">
+			<label for="question" class="form-label">Your Question</label>
+			<textarea id="question" name="question" class="form-textarea"
+				placeholder="e.g., What should I watch out for with my new medication? How is my recovery going? When should I schedule my next appointment?"
+				rows="3" required></textarea>
+		</div>
+		<div class="form-actions">
+			<button type="submit" class="btn btn-accent" id="btn-submit-question">
+				🤖 Ask GLM 5.1
+			</button>
+		</div>
+	</form>
+</div>
+
+{% if qa_history %}
+<section class="section" style="margin-top: 2rem;">
+	<h2 class="section-title">Previous Questions</h2>
+	<div class="qa-list">
+		{% for qa in qa_history %}
+		<div class="qa-exchange" id="qa-{{ qa.id }}">
+			<div class="qa-question">
+				<strong>Q:</strong> {{ qa.question }}
+				<span class="timeline-date">{{ qa.created_at[:16] }}</span>
+			</div>
+			<div class="qa-answer">
+				<strong>A:</strong> {{ qa.answer }}
+			</div>
+		</div>
+		{% endfor %}
+	</div>
+</section>
+{% endif %}
+{% endblock %}

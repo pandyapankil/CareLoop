@@ -1,5 +1,6 @@
 """CareLoop — FastAPI application entry point."""
 import os
+import json
 import uuid
 from pathlib import Path
 from datetime import datetime, timezone
@@ -193,6 +194,96 @@ async def submit_checkin(
              "patient_checkin", content,
              datetime.now(timezone.utc).isoformat())
         )
+    return RedirectResponse(f"/patient/{patient_id}", status_code=303)
+
+
+# ─── GLM Analysis ────────────────────────────────────────────
+@app.post("/patient/{patient_id}/analyze")
+async def run_analysis(patient_id: str):
+    """Trigger GLM 5.1 care analysis for a patient."""
+    from app.services.glm_service import run_care_analysis
+    result = await run_care_analysis(patient_id)
+    if "error" in result:
+        return HTMLResponse(f"<h1>Error: {result['error']}</h1>", status_code=400)
+    return RedirectResponse(f"/patient/{patient_id}", status_code=303)
+
+
+@app.get("/analysis/{analysis_id}", response_class=HTMLResponse)
+async def analysis_detail(request: Request, analysis_id: str):
+    """View full analysis with AI transparency panel."""
+    with get_db() as db:
+        analysis = db.execute(
+            "SELECT * FROM glm_analyses WHERE id = ?", (analysis_id,)
+        ).fetchone()
+        if not analysis:
+            return HTMLResponse("<h1>Analysis not found</h1>", status_code=404)
+
+        patient = db.execute(
+            "SELECT * FROM patients WHERE id = ?", (analysis["patient_id"],)
+        ).fetchone()
+
+        tasks = db.execute(
+            "SELECT * FROM tasks WHERE analysis_id = ?", (analysis_id,)
+        ).fetchall()
+
+        # Parse JSON fields
+        risk_flags = json.loads(analysis["risk_flags_json"] or "[]")
+        tasks_from_analysis = json.loads(analysis["tasks_json"] or "[]")
+
+    return templates.TemplateResponse("analysis.html", {
+        "request": request,
+        "analysis": dict(analysis),
+        "patient": dict(patient),
+        "risk_flags": risk_flags,
+        "tasks_from_analysis": tasks_from_analysis,
+        "tasks": [dict(t) for t in tasks],
+        "glm_available": bool(os.getenv("GLM_API_KEY")),
+    })
+
+
+# ─── Patient Q&A ─────────────────────────────────────────────
+@app.get("/patient/{patient_id}/ask", response_class=HTMLResponse)
+async def ask_form(request: Request, patient_id: str):
+    """Show patient Q&A form."""
+    with get_db() as db:
+        patient = db.execute("SELECT * FROM patients WHERE id = ?", (patient_id,)).fetchone()
+        if not patient:
+            return HTMLResponse("<h1>Patient not found</h1>", status_code=404)
+
+        qa_history = db.execute(
+            "SELECT * FROM qa_exchanges WHERE patient_id = ? ORDER BY created_at DESC LIMIT 10",
+            (patient_id,)
+        ).fetchall()
+
+    return templates.TemplateResponse("ask.html", {
+        "request": request,
+        "patient": dict(patient),
+        "qa_history": [dict(q) for q in qa_history],
+        "glm_available": bool(os.getenv("GLM_API_KEY")),
+    })
+
+
+@app.post("/patient/{patient_id}/ask")
+async def submit_question(
+    patient_id: str,
+    question: str = Form(...)
+):
+    """Submit a patient question to GLM 5.1."""
+    from app.services.glm_service import run_patient_qa
+    result = await run_patient_qa(patient_id, question)
+    if "error" in result:
+        return HTMLResponse(f"<h1>Error: {result['error']}</h1>", status_code=400)
+    return RedirectResponse(f"/patient/{patient_id}/ask", status_code=303)
+
+
+# ─── Trend Detection ─────────────────────────────────────────
+@app.post("/patient/{patient_id}/trends")
+async def detect_trends(patient_id: str):
+    """Run GLM 5.1 trend detection across patient analyses."""
+    from app.services.glm_service import run_trend_detection
+    result = await run_trend_detection(patient_id)
+    if "error" in result:
+        return HTMLResponse(f"<h1>Error: {result['error']}</h1>", status_code=400)
     return RedirectResponse(f"/patient/{patient_id}", status_code=303)
 
 
