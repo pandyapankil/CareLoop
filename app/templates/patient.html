@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}{{ patient.name }} — CareLoop{% endblock %}
+
+{% block content %}
+<div class="page-header">
+	<a href="/" class="back-link">← Dashboard</a>
+	<div class="patient-header">
+		<div class="patient-avatar large">{{ patient.name[0] }}</div>
+		<div>
+			<h1 class="page-title">{{ patient.name }}</h1>
+			<p class="page-subtitle">{{ patient.condition }}</p>
+		</div>
+	</div>
+</div>
+
+<div class="action-bar">
+	<a href="/patient/{{ patient.id }}/provider-update" class="btn btn-primary" id="btn-provider-update">
+		📋 Provider Update
+	</a>
+	<a href="/patient/{{ patient.id }}/checkin" class="btn btn-secondary" id="btn-patient-checkin">
+		💬 Patient Check-in
+	</a>
+	<form action="/patient/{{ patient.id }}/analyze" method="POST" style="display:inline">
+		<button type="submit" class="btn btn-accent" id="btn-run-analysis">
+			🤖 Run AI Analysis
+		</button>
+	</form>
+	<a href="/patient/{{ patient.id }}/ask" class="btn btn-outline" id="btn-ask-ai">
+		❓ Ask CareLoop AI
+	</a>
+</div>
+
+{% if tasks %}
+<section class="section">
+	<h2 class="section-title">Active Tasks</h2>
+	<div class="tasks-list">
+		{% for task in tasks %}
+		{% if task.status != 'completed' %}
+		<div class="task-card" id="task-{{ task.id }}">
+			<div class="task-header">
+				<span class="task-title">{{ task.title }}</span>
+				<span class="badge badge-{{ task.owner }}">{{ task.owner }}</span>
+			</div>
+			{% if task.due_window %}
+			<div class="task-meta">Due: {{ task.due_window }}</div>
+			{% endif %}
+			{% if task.description %}
+			<div class="task-desc">{{ task.description }}</div>
+			{% endif %}
+		</div>
+		{% endif %}
+		{% endfor %}
+	</div>
+</section>
+{% endif %}
+
+<section class="section">
+	<h2 class="section-title">Care Timeline</h2>
+	{% if timeline %}
+	<div class="timeline">
+		{% for item in timeline %}
+		<div class="timeline-item timeline-{{ item.type }}" id="timeline-{{ loop.index }}">
+			<div class="timeline-marker"></div>
+			<div class="timeline-content">
+				{% if item.type == 'encounter' %}
+				<div class="timeline-header">
+					<span class="badge badge-{{ item.data.author_role }}">{{ item.data.author_role }}</span>
+					<span class="timeline-author">{{ item.data.author_name }}</span>
+					<span class="timeline-date">{{ item.data.created_at[:16] }}</span>
+				</div>
+				<div class="timeline-body">
+					<p>{{ item.data.content }}</p>
+				</div>
+
+				{% elif item.type == 'analysis' %}
+				<div class="timeline-header">
+					<span class="badge badge-ai">🤖 AI Analysis</span>
+					<span class="timeline-date">{{ item.data.created_at[:16] }}</span>
+				</div>
+				<div class="timeline-body analysis-body">
+					<div class="analysis-section">
+						<h4>Summary</h4>
+						<p>{{ item.data.shared_summary }}</p>
+					</div>
+					{% if item.data.patient_summary %}
+					<div class="analysis-section">
+						<h4>Patient-Friendly Summary</h4>
+						<p>{{ item.data.patient_summary }}</p>
+					</div>
+					{% endif %}
+					{% if item.data.trend_summary %}
+					<div class="analysis-section trend-section">
+						<h4>📈 Trend Analysis</h4>
+						<p>{{ item.data.trend_summary }}</p>
+					</div>
+					{% endif %}
+					<a href="/analysis/{{ item.data.id }}" class="analysis-detail-link">View Full Analysis →</a>
+				</div>
+
+				{% elif item.type == 'qa' %}
+				<div class="timeline-header">
+					<span class="badge badge-qa">❓ Patient Question</span>
+					<span class="timeline-date">{{ item.data.created_at[:16] }}</span>
+				</div>
+				<div class="timeline-body qa-body">
+					<div class="qa-question"><strong>Q:</strong> {{ item.data.question }}</div>
+					<div class="qa-answer"><strong>A:</strong> {{ item.data.answer }}</div>
+				</div>
+				{% endif %}
+			</div>
+		</div>
+		{% endfor %}
+	</div>
+	{% else %}
+	<div class="empty-state">
+		<div class="empty-icon">📝</div>
+		<h3>No activity yet</h3>
+		<p>Submit a provider update or patient check-in to get started.</p>
+	</div>
+	{% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}CareLoop — Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header">
+	<h1 class="page-title">Patient Dashboard</h1>
+	<p class="page-subtitle">AI-powered care coordination at a glance</p>
+</div>
+
+<div class="stats-row">
+	<div class="stat-card">
+		<div class="stat-number">{{ patients|length }}</div>
+		<div class="stat-label">Patients</div>
+	</div>
+	<div class="stat-card">
+		<div class="stat-number">{{ patients|map(attribute='encounter_count')|sum }}</div>
+		<div class="stat-label">Encounters</div>
+	</div>
+	<div class="stat-card">
+		<div class="stat-number">{{ patients|map(attribute='analysis_count')|sum }}</div>
+		<div class="stat-label">AI Analyses</div>
+	</div>
+</div>
+
+{% if patients %}
+<div class="patient-grid">
+	{% for patient in patients %}
+	<a href="/patient/{{ patient.id }}" class="patient-card" id="patient-{{ patient.id }}">
+		<div class="patient-card-header">
+			<div class="patient-avatar">{{ patient.name[0] }}</div>
+			<div class="patient-info">
+				<h3 class="patient-name">{{ patient.name }}</h3>
+				<span class="patient-condition">{{ patient.condition }}</span>
+			</div>
+		</div>
+		<div class="patient-card-stats">
+			<div class="mini-stat">
+				<span class="mini-stat-value">{{ patient.encounter_count }}</span>
+				<span class="mini-stat-label">encounters</span>
+			</div>
+			<div class="mini-stat">
+				<span class="mini-stat-value">{{ patient.analysis_count }}</span>
+				<span class="mini-stat-label">analyses</span>
+			</div>
+		</div>
+		<div class="patient-card-footer">
+			<span class="view-link">View Timeline →</span>
+		</div>
+	</a>
+	{% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+	<div class="empty-icon">🏥</div>
+	<h2>No patients yet</h2>
+	<p>Run <code>python seed.py</code> to add demo patients.</p>
+</div>
+{% endif %}
+{% endblock %}

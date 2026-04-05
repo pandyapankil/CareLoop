@@ -1,0 +1,135 @@
+"""CareLoop — FastAPI application entry point."""
+import os
+from pathlib import Path
+from dotenv import load_dotenv
+
+load_dotenv()
+
+from fastapi import FastAPI, Request
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+from fastapi.responses import HTMLResponse, JSONResponse
+
+from app.database import init_db, get_db
+
+# Initialize app
+app = FastAPI(
+    title=os.getenv("APP_NAME", "CareLoop"),
+    description="AI-powered care coordination using GLM 5.1",
+    version="1.0.0",
+)
+
+# Static files and templates
+BASE_DIR = Path(__file__).resolve().parent
+app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
+templates = Jinja2Templates(directory=BASE_DIR / "templates")
+
+
+@app.on_event("startup")
+async def startup():
+    """Initialize database on startup."""
+    init_db()
+
+
+# ─── Health Check ────────────────────────────────────────────
+@app.get("/health")
+async def health_check():
+    """Health check for deployment."""
+    return JSONResponse({"status": "healthy", "service": "CareLoop", "version": "1.0.0"})
+
+
+# ─── Home Page ───────────────────────────────────────────────
+@app.get("/", response_class=HTMLResponse)
+async def home(request: Request):
+    """Dashboard showing all patients."""
+    with get_db() as db:
+        patients = db.execute(
+            "SELECT * FROM patients ORDER BY created_at DESC"
+        ).fetchall()
+
+        # Get encounter counts per patient
+        patient_list = []
+        for p in patients:
+            count = db.execute(
+                "SELECT COUNT(*) as cnt FROM encounters WHERE patient_id = ?",
+                (p["id"],)
+            ).fetchone()["cnt"]
+
+            analysis_count = db.execute(
+                "SELECT COUNT(*) as cnt FROM glm_analyses WHERE patient_id = ?",
+                (p["id"],)
+            ).fetchone()["cnt"]
+
+            patient_list.append({
+                **dict(p),
+                "encounter_count": count,
+                "analysis_count": analysis_count,
+            })
+
+    return templates.TemplateResponse("home.html", {
+        "request": request,
+        "patients": patient_list,
+        "glm_available": bool(os.getenv("GLM_API_KEY")),
+    })
+
+
+# ─── Patient Timeline ───────────────────────────────────────
+@app.get("/patient/{patient_id}", response_class=HTMLResponse)
+async def patient_timeline(request: Request, patient_id: str):
+    """Patient detail page with timeline of encounters and analyses."""
+    with get_db() as db:
+        patient = db.execute(
+            "SELECT * FROM patients WHERE id = ?", (patient_id,)
+        ).fetchone()
+
+        if not patient:
+            return HTMLResponse("<h1>Patient not found</h1>", status_code=404)
+
+        encounters = db.execute(
+            "SELECT * FROM encounters WHERE patient_id = ? ORDER BY created_at DESC",
+            (patient_id,)
+        ).fetchall()
+
+        analyses = db.execute(
+            "SELECT * FROM glm_analyses WHERE patient_id = ? ORDER BY created_at DESC",
+            (patient_id,)
+        ).fetchall()
+
+        tasks = db.execute(
+            "SELECT * FROM tasks WHERE patient_id = ? ORDER BY created_at DESC",
+            (patient_id,)
+        ).fetchall()
+
+        qa_exchanges = db.execute(
+            "SELECT * FROM qa_exchanges WHERE patient_id = ? ORDER BY created_at DESC",
+            (patient_id,)
+        ).fetchall()
+
+        # Build unified timeline
+        timeline = []
+        for e in encounters:
+            timeline.append({"type": "encounter", "data": dict(e), "at": e["created_at"]})
+        for a in analyses:
+            timeline.append({"type": "analysis", "data": dict(a), "at": a["created_at"]})
+        for q in qa_exchanges:
+            timeline.append({"type": "qa", "data": dict(q), "at": q["created_at"]})
+
+        timeline.sort(key=lambda x: x["at"], reverse=True)
+
+    return templates.TemplateResponse("patient.html", {
+        "request": request,
+        "patient": dict(patient),
+        "timeline": timeline,
+        "tasks": [dict(t) for t in tasks],
+        "glm_available": bool(os.getenv("GLM_API_KEY")),
+    })
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(
+        "app.main:app",
+        host=os.getenv("HOST", "0.0.0.0"),
+        port=int(os.getenv("PORT", "8080")),
+        reload=os.getenv("DEBUG", "true").lower() == "true",
+    )
