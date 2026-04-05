@@ -15,7 +15,19 @@ from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 
 from app.database import init_db, get_db
-from app.routers import symptoms, messages, notifications
+from app.routers import (
+    symptoms,
+    messages,
+    notifications,
+    auth,
+    appointments,
+    medications,
+    documents,
+    careteam,
+    dashboard,
+    analytics,
+    settings,
+)
 
 # Initialize app
 app = FastAPI(
@@ -24,7 +36,6 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# Static files and templates
 BASE_DIR = Path(__file__).resolve().parent
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
@@ -32,6 +43,14 @@ templates = Jinja2Templates(directory=BASE_DIR / "templates")
 app.include_router(symptoms.router)
 app.include_router(messages.router)
 app.include_router(notifications.router)
+app.include_router(auth.router)
+app.include_router(appointments.router)
+app.include_router(medications.router)
+app.include_router(documents.router)
+app.include_router(careteam.router)
+app.include_router(dashboard.router)
+app.include_router(analytics.router)
+app.include_router(settings.router)
 
 
 @app.on_event("startup")
