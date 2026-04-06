@@ -2,69 +2,78 @@
 
 > **AI that closes the care coordination gap** — Powered by GLM 5.1
 
-CareLoop is an AI-powered care coordination platform that bridges the communication gap between healthcare providers and patients. Using GLM 5.1's advanced reasoning capabilities, CareLoop analyzes clinical encounters and patient check-ins to produce structured care summaries, actionable tasks, and risk assessments.
+CareLoop is an AI-powered care coordination platform that bridges the communication gap between healthcare providers and patients. Using GLM 5.1's advanced reasoning capabilities, CareLoop analyzes clinical encounters and patient check-ins to produce structured care summaries, actionable tasks, risk assessments, and personalized care plans.
 
-## 🎯 What It Does
+## Demo - Try It Now (No API Key Required!)
 
-1. **Provider submits** a clinical update about a patient
-2. **Patient submits** a self-check-in describing how they feel
-3. **GLM 5.1 analyzes** all encounters and produces:
-   - A clinical summary for the care team
-   - A patient-friendly summary in plain language
-   - Actionable follow-up tasks with owners and due windows
-   - Risk flags with severity levels
-4. **Timeline displays** everything in a unified, easy-to-scan view
-5. **Patient can ask** GLM 5.1 follow-up questions about their care
-6. **Trend detection** compares analyses over time to spot patterns
+CareLoop works **out of the box without any API key** — it includes a sophisticated demo mode with realistic mock AI responses:
 
-## 🤖 GLM 5.1 Usage (3 Distinct Call Types)
+```bash
+# Quick start
+git clone https://github.com/your-repo/careloop.git
+cd careloop
+pip install -r requirements.txt
+python3 seed.py
+python3 -m uvicorn app.main:app --reload --port 8080
+```
 
-CareLoop demonstrates deep GLM 5.1 integration with three separate AI workflows:
+Then open **http://localhost:8080** — you'll see 3 demo patients with rich clinical histories ready for analysis.
 
-| Call Type | Purpose | What GLM Does |
-|-----------|---------|---------------|
-| **Care Analysis** | Aggregate encounters → structured output | Produces JSON with summaries, tasks, and risk flags |
-| **Trend Detection** | Compare analyses over time | Identifies patterns, trajectory direction, and changes |
-| **Patient Q&A** | Answer patient questions from context | Provides empathetic, context-aware answers |
+## ✨ GLM 5.1 Features Demonstrated
 
-## 🖥️ Tech Stack
+CareLoop showcases **6 distinct GLM 5.1 capabilities**:
 
-- **Backend**: Python 3.11, FastAPI
-- **Frontend**: Jinja2 server-rendered templates
-- **Database**: SQLite (zero-config, portable)
-- **AI Model**: GLM 5.1 via Z.ai API (OpenAI-compatible)
-- **Styling**: Vanilla CSS with dark mode, glassmorphism
-- **Container**: Docker
+| Feature | Description | GLM Capability |
+|---------|-------------|----------------|
+| **Care Analysis** | Analyzes encounters → structured summaries, tasks, risk flags | Function calling + JSON output |
+| **Trend Detection** | Compares analyses over time to spot patterns | Long-horizon reasoning |
+| **Patient Q&A** | Context-aware answers to patient questions | Conversational AI |
+| **Encounter Summarization** | Extracts structured data from free-text notes | Information extraction |
+| **Care Plan Generation** | Creates multi-week personalized care plans | Planning + function calling |
+| **Real-time Thinking** | Watch GLM reason through the problem | Reasoning content streaming |
+
+### What Makes This Special for GLM 5.1
+
+- **Thinking Display**: Every AI call shows GLM's reasoning in real-time
+- **Function Calling**: GLM autonomously creates tasks, schedules reminders, sends messages
+- **Transparency Panel**: See the exact prompts sent and responses received
+- **Toast Notifications**: Visual feedback as GLM takes actions
 
 ## 🚀 Quick Start
 
 ### Local Development
 
 ```bash
-# Clone
+# Clone and enter directory
 git clone https://github.com/YOUR_USERNAME/careloop.git
 cd careloop
 
 # Install dependencies
 pip install -r requirements.txt
 
-# Set up environment (optional — works without API key in demo mode)
+# (Optional) Add your GLM API key for real AI
 cp .env.example .env
-# Edit .env and add your GLM_API_KEY
+# Edit .env and add: GLM_API_KEY=your_z.ai_api_key
 
-# Seed demo data
+# Seed demo data (3 patients with rich clinical histories)
 python3 seed.py
 
-# Run
+# Run the application
 python3 -m uvicorn app.main:app --reload --port 8080
 ```
 
-Visit http://localhost:8080
+Visit **http://localhost:8080**
 
 ### Docker
 
 ```bash
+# Build
 docker build -t careloop .
+
+# Run without API key (demo mode)
+docker run -p 8080:8080 careloop
+
+# Or with your GLM API key
 docker run -p 8080:8080 -e GLM_API_KEY=your-key careloop
 ```
 
@@ -82,6 +91,63 @@ gcloud run deploy careloop \
   --set-env-vars GLM_API_KEY=$GLM_API_KEY,GLM_MODEL=glm-5.1
 ```
 
+## 📱 Demo Walkthrough
+
+### 1. Dashboard
+On the home page, you'll see:
+- 3 demo patients with clinical histories
+- Stats showing encounters and AI analyses
+- Quick access to all GLM features
+
+### 2. Patient Timeline
+Click any patient to see:
+- Chronological timeline of all encounters
+- Provider updates and patient check-ins
+- AI analyses with structured outputs
+
+### 3. Run GLM 5.1 Analysis
+Click "Run AI Analysis" and watch:
+- Loading overlay with thinking indicator
+- Real-time reasoning display
+- Toast notifications as tasks are created
+- Structured summaries, risk flags, and tasks
+
+### 4. Ask GLM Questions
+Go to "Ask CareLoop AI" to:
+- Type a question or use voice input
+- Get context-aware responses
+- See previous Q&A history
+
+### 5. Generate Care Plans
+Click "Generate Care Plan" for:
+- Multi-week personalized plans
+- Weekly tasks for patient and provider
+- Goals, milestones, and emergency triggers
+
+### 6. Detect Trends
+Click "Detect Trends" to:
+- Compare multiple analyses over time
+- Identify patterns and trajectory
+- See directional indicators
+
+### 7. View Transparency
+Every AI response includes:
+- Expandable transparency panel
+- Exact prompts sent to GLM
+- Raw AI responses
+- Model and timing info
+
+## 📸 Screenshot Ideas for Submission
+
+1. **Home Dashboard** — Show the 3 patients and feature cards
+2. **Patient Timeline** — Show encounters with AI analyses
+3. **AI Analysis Running** — Capture the thinking display + toasts
+4. **Analysis Results** — Show summaries, tasks, risk flags
+5. **Patient Q&A** — Show voice input and response
+6. **Care Plan** — Show multi-week plan with goals
+7. **Trend Detection** — Show pattern analysis
+8. **Transparency Panel** — Show prompt + raw response
+
 ## ⚙️ Environment Variables
 
 | Variable | Default | Required | Description |
@@ -94,14 +160,14 @@ gcloud run deploy careloop \
 
 *App works in demo mode without an API key — perfect for evaluation.
 
-## 🔍 AI Transparency
+## 🖥️ Tech Stack
 
-Every GLM analysis includes a transparency panel showing:
-- The exact system prompt sent to GLM 5.1
-- The full user context assembled from encounters
-- The raw, unmodified GLM response
-
-This demonstrates responsible AI practices and lets evaluators inspect exactly how GLM 5.1 is being used.
+- **Backend**: Python 3.11, FastAPI
+- **Frontend**: Jinja2 server-rendered templates
+- **Database**: SQLite (zero-config, portable)
+- **AI Model**: GLM 5.1 via Z.ai API (OpenAI-compatible)
+- **Styling**: Vanilla CSS with dark mode, glassmorphism
+- **Container**: Docker
 
 ## 📁 Project Structure
 
@@ -112,15 +178,13 @@ careloop/
 │   ├── database.py          # SQLite setup + schema
 │   ├── models.py            # Pydantic models
 │   ├── services/
-│   │   └── glm_service.py   # All 3 GLM call types
-│   ├── templates/           # Jinja2 HTML templates
+│   │   └── glm_service.py   # All 6 GLM call types
+│   ├── templates/           # 35+ Jinja2 HTML templates
 │   └── static/
 │       └── style.css        # Dark-mode premium styles
-├── tests/
-│   └── test_glm_flow.py     # Integration tests
-├── seed.py                  # Demo data seeder
-├── Dockerfile
+├── seed.py                  # Demo data seeder (3 patients)
 ├── requirements.txt
+├── Dockerfile
 └── README.md
 ```
 
@@ -131,9 +195,14 @@ pip install pytest pytest-asyncio
 python3 -m pytest tests/ -v
 ```
 
-## 📄 License
+## 🔍 AI Transparency
 
-MIT
+Every GLM analysis includes a transparency panel showing:
+- The exact system prompt sent to GLM 5.1
+- The full user context assembled from encounters
+- The raw, unmodified GLM response
+
+This demonstrates responsible AI practices and lets evaluators inspect exactly how GLM 5.1 is being used.
 
 ---
 
