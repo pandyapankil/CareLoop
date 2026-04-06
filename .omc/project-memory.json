@@ -1,0 +1,224 @@
+{
+  "version": "1.0.0",
+  "lastScanned": 1775444227561,
+  "projectRoot": "/home/user/personal/CareLoop",
+  "techStack": {
+    "languages": [
+      {
+        "name": "Python",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "requirements.txt"
+        ]
+      }
+    ],
+    "frameworks": [],
+    "packageManager": "pip",
+    "runtime": null
+  },
+  "build": {
+    "buildCommand": null,
+    "testCommand": null,
+    "lintCommand": null,
+    "devCommand": null,
+    "scripts": {}
+  },
+  "conventions": {
+    "namingStyle": "snake_case",
+    "importStyle": null,
+    "testPattern": null,
+    "fileOrganization": null
+  },
+  "structure": {
+    "isMonorepo": false,
+    "workspaces": [],
+    "mainDirectories": [
+      "app",
+      "tests"
+    ],
+    "gitBranches": {
+      "defaultBranch": "main",
+      "branchingStrategy": null
+    }
+  },
+  "customNotes": [],
+  "directoryMap": {
+    "app": {
+      "path": "app",
+      "purpose": "Application code",
+      "fileCount": 4,
+      "lastAccessed": 1775444227543,
+      "keyFiles": [
+        "__init__.py",
+        "database.py",
+        "main.py",
+        "models.py"
+      ]
+    },
+    "tests": {
+      "path": "tests",
+      "purpose": "Test files",
+      "fileCount": 2,
+      "lastAccessed": 1775444227554,
+      "keyFiles": [
+        "__init__.py",
+        "test_glm_flow.py"
+      ]
+    },
+    "uploads": {
+      "path": "uploads",
+      "purpose": null,
+      "fileCount": 0,
+      "lastAccessed": 1775444227555,
+      "keyFiles": []
+    },
+    "app/middleware": {
+      "path": "app/middleware",
+      "purpose": "Middleware",
+      "fileCount": 3,
+      "lastAccessed": 1775444227557,
+      "keyFiles": [
+        "__init__.py",
+        "auth.py",
+        "csrf.py"
+      ]
+    },
+    "app/services": {
+      "path": "app/services",
+      "purpose": "Business logic services",
+      "fileCount": 2,
+      "lastAccessed": 1775444227558,
+      "keyFiles": [
+        "__init__.py",
+        "glm_service.py"
+      ]
+    },
+    "app/static": {
+      "path": "app/static",
+      "purpose": "Static files",
+      "fileCount": 1,
+      "lastAccessed": 1775444227558,
+      "keyFiles": [
+        "style.css"
+      ]
+    }
+  },
+  "hotPaths": [
+    {
+      "path": "app/routers/__init__.py",
+      "accessCount": 1,
+      "lastAccessed": 1775444398148,
+      "type": "file"
+    },
+    {
+      "path": "README.md",
+      "accessCount": 1,
+      "lastAccessed": 1775444398412,
+      "type": "file"
+    },
+    {
+      "path": "app/models.py",
+      "accessCount": 1,
+      "lastAccessed": 1775444398469,
+      "type": "file"
+    },
+    {
+      "path": "tests/test_glm_flow.py",
+      "accessCount": 1,
+      "lastAccessed": 1775444398521,
+      "type": "file"
+    },
+    {
+      "path": "app/main.py",
+      "accessCount": 1,
+      "lastAccessed": 1775444398586,
+      "type": "file"
+    },
+    {
+      "path": "app/database.py",
+      "accessCount": 1,
+      "lastAccessed": 1775444425031,
+      "type": "file"
+    },
+    {
+      "path": "seed.py",
+      "accessCount": 1,
+      "lastAccessed": 1775444425148,
+      "type": "file"
+    },
+    {
+      "path": "app/services/glm_service.py",
+      "accessCount": 1,
+      "lastAccessed": 1775444425346,
+      "type": "file"
+    },
+    {
+      "path": "app/routers/auth.py",
+      "accessCount": 1,
+      "lastAccessed": 1775444440028,
+      "type": "file"
+    },
+    {
+      "path": "app/routers/messages.py",
+      "accessCount": 1,
+      "lastAccessed": 1775444440493,
+      "type": "file"
+    },
+    {
+      "path": "app/routers/symptoms.py",
+      "accessCount": 1,
+      "lastAccessed": 1775444440752,
+      "type": "file"
+    },
+    {
+      "path": "app/routers/notifications.py",
+      "accessCount": 1,
+      "lastAccessed": 1775444440806,
+      "type": "file"
+    },
+    {
+      "path": "app/routers/careteam.py",
+      "accessCount": 1,
+      "lastAccessed": 1775444440860,
+      "type": "file"
+    },
+    {
+      "path": "app/routers/dashboard.py",
+      "accessCount": 1,
+      "lastAccessed": 1775444440928,
+      "type": "file"
+    },
+    {
+      "path": "app/routers/appointments.py",
+      "accessCount": 1,
+      "lastAccessed": 1775444440963,
+      "type": "file"
+    },
+    {
+      "path": "app/routers/documents.py",
+      "accessCount": 1,
+      "lastAccessed": 1775444441002,
+      "type": "file"
+    },
+    {
+      "path": "app/routers/medications.py",
+      "accessCount": 1,
+      "lastAccessed": 1775444441080,
+      "type": "file"
+    },
+    {
+      "path": "app/routers/analytics.py",
+      "accessCount": 1,
+      "lastAccessed": 1775444441315,
+      "type": "file"
+    },
+    {
+      "path": "app/routers/settings.py",
+      "accessCount": 1,
+      "lastAccessed": 1775444441551,
+      "type": "file"
+    }
+  ],
+  "userDirectives": []
+}
