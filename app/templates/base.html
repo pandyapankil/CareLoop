@@ -232,9 +232,11 @@
 						window.isThinking = false;
 						hideThinkingBadge();
 						if (thinkingDots) thinkingDots.style.display = "none";
+						const errMsg = data.content || "Unknown error";
+						const isKeyError = errMsg.includes("GLM_API_KEY not configured");
 						if (outputEl)
-							outputEl.innerHTML = `<div class="analysis-card" style="border-left:3px solid var(--risk-high)"><p>GLM 5.1 is in demo mode — connect an API key for live AI. Falling back to mock data...</p></div>`;
-						showToast("⚠️ Using demo mode (no API key)", "error");
+							outputEl.innerHTML = `<div class="analysis-card" style="border-left:3px solid var(--risk-high)"><p>${isKeyError ? "GLM 5.1 is in demo mode — connect an API key for live AI." : "GLM 5.1 error: " + errMsg}. Falling back to mock data...</p></div>`;
+						showToast(isKeyError ? "⚠️ Using demo mode (no API key)" : "⚠️ GLM 5.1: " + errMsg, "error");
 						setTimeout(() => window.location.reload(), 2000);
 					}
 				};
