@@ -140,7 +140,7 @@ gcloud run deploy careloop \
   --region us-central1 \
   --allow-unauthenticated \
   --port 8080 \
-  --set-env-vars GLM_API_KEY=$GLM_API_KEY,GLM_MODEL=glm-5.1
+  --set-env-vars GLM_API_KEY=$GLM_API_KEY,GLM_MODEL=glm-4-alltools
 ```
 
 ---
@@ -209,7 +209,7 @@ Switch between demo personas to see:
 |----------|---------|----------|-------------|
 | `GLM_API_KEY` | — | No* | Z.ai API key. Without it, app uses realistic mock data |
 | `GLM_API_URL` | `https://api.z.ai/api/paas/v4/chat/completions` | No | GLM API endpoint |
-| `GLM_MODEL` | `glm-5.1` | No | Model name |
+| `GLM_MODEL` | `glm-4-alltools` | No | Model name |
 | `PORT` | `8080` | No | Server port |
 | `HOST` | `0.0.0.0` | No | Server host |
 | `DEBUG` | `true` | No | Enable auto-reload |

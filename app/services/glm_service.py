@@ -38,7 +38,7 @@ def _api_url():
 
 
 def _model():
-    return os.getenv("GLM_MODEL", "glm-5.1")
+    return os.getenv("GLM_MODEL", "glm-4-alltools")
 
 
 class StreamEventType(str, Enum):
@@ -119,13 +119,14 @@ def reset_usage():
 
 
 PRICING_PER_1K = {
+    "glm-4-alltools": {"input": 0.001, "output": 0.001},
     "glm-5.1": {"input": 0.001, "output": 0.001},
     "glm-5.1-flash": {"input": 0.0001, "output": 0.0001},
 }
 
 
 def _calc_cost(model: str, usage: Usage) -> float:
-    pricing = PRICING_PER_1K.get(model, PRICING_PER_1K["glm-5.1"])
+    pricing = PRICING_PER_1K.get(model, PRICING_PER_1K["glm-4-alltools"])
     return (
         usage.prompt_tokens / 1000 * pricing["input"]
         + usage.completion_tokens / 1000 * pricing["output"]
