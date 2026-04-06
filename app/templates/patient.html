@@ -1,7 +1,5 @@
-{% extends "base.html" %}
-{% block title %}{{ patient.name }} — CareLoop{% endblock %}
-
-{% block content %}
+{% extends "base.html" %} {% block title %}{{ patient.name }} — CareLoop{%
+endblock %} {% block content %}
 <div class="page-header">
 	<a href="/" class="back-link">← Dashboard</a>
 	<div class="patient-header">
@@ -20,80 +18,123 @@
 	<a href="/patient/{{ patient.id }}/checkin" class="btn btn-secondary">
 		💬 Patient Check-in
 	</a>
-	<form action="/patient/{{ patient.id }}/analyze" method="POST" class="glm-stream-form" data-stream-url="/api/stream/analyze/{{ patient.id }}" data-output="#analysis-output" style="display:inline">
-		<button type="submit" class="btn btn-accent">
-			🤖 Run AI Analysis
-		</button>
+	<form
+		action="/patient/{{ patient.id }}/analyze"
+		method="POST"
+		class="glm-stream-form"
+		data-stream-url="/api/stream/analyze/{{ patient.id }}"
+		data-output="#analysis-output"
+		style="display: inline"
+	>
+		<button type="submit" class="btn btn-accent">🤖 Run AI Analysis</button>
 	</form>
 	<a href="/patient/{{ patient.id }}/ask" class="btn btn-outline">
 		❓ Ask CareLoop AI
 	</a>
-	<form action="/patient/{{ patient.id }}/careplan" method="POST" class="glm-stream-form" data-stream-url="/api/stream/careplan/{{ patient.id }}" data-output="#analysis-output" style="display:inline">
+	<form
+		action="/patient/{{ patient.id }}/careplan"
+		method="POST"
+		class="glm-stream-form"
+		data-stream-url="/api/stream/careplan/{{ patient.id }}"
+		data-output="#analysis-output"
+		style="display: inline"
+	>
 		<button type="submit" class="btn btn-primary">
 			📋 Generate Care Plan
 		</button>
 	</form>
-	<form action="/patient/{{ patient.id }}/trends" method="POST" class="glm-stream-form" data-stream-url="/api/stream/trends/{{ patient.id }}" data-output="#analysis-output" style="display:inline">
-		<button type="submit" class="btn btn-outline">
-			📈 Detect Trends
-		</button>
+	<form
+		action="/patient/{{ patient.id }}/trends"
+		method="POST"
+		class="glm-stream-form"
+		data-stream-url="/api/stream/trends/{{ patient.id }}"
+		data-output="#analysis-output"
+		style="display: inline"
+	>
+		<button type="submit" class="btn btn-outline">📈 Detect Trends</button>
 	</form>
 </div>
 
 <details class="glm-reasoning-section" id="glm-reasoning-section" open>
-    <summary class="glm-reasoning-header">
-        <span class="glm-reasoning-icon">🧠</span>
-        <span class="glm-reasoning-title">🤖 GLM 5.1 Reasoning</span>
-        <span class="glm-thinking-dots" id="glm-thinking-dots" style="display:none">
-            <span class="dot"></span>
-            <span class="dot"></span>
-            <span class="dot"></span>
-        </span>
-    </summary>
-    <div class="glm-reasoning-content">
-        <div class="glm-reasoning-text" id="glm-reasoning-text"></div>
-        <div class="glm-analysis-stream analysis-output" id="analysis-output"></div>
-    </div>
+	<summary class="glm-reasoning-header">
+		<span class="glm-reasoning-icon">🧠</span>
+		<span class="glm-reasoning-title">🤖 GLM 5.1 Reasoning</span>
+		<span
+			class="glm-thinking-dots"
+			id="glm-thinking-dots"
+			style="display: none"
+		>
+			<span class="dot"></span>
+			<span class="dot"></span>
+			<span class="dot"></span>
+		</span>
+	</summary>
+	<div class="glm-reasoning-content">
+		<div class="glm-reasoning-text" id="glm-reasoning-text"></div>
+		<div
+			class="glm-analysis-stream analysis-output"
+			id="analysis-output"
+		></div>
+	</div>
 </details>
 
-{% if tasks %}
-{% set active_tasks = tasks | selectattr('status', 'ne', 'completed') | selectattr('status', 'ne', 'skipped') | list %}
-{% set completed_tasks = tasks | selectattr('status', 'eq', 'completed') | list %}
-{% if active_tasks %}
+{% if tasks %} {% set active_tasks = tasks | selectattr('status', 'ne',
+'completed') | selectattr('status', 'ne', 'skipped') | list %} {% set
+completed_tasks = tasks | selectattr('status', 'eq', 'completed') | list %} {%
+if active_tasks %}
 <section class="section">
 	<h2 class="section-title">Active Tasks ({{ active_tasks|length }})</h2>
 	<div class="tasks-list">
 		{% for task in active_tasks %}
-		<div class="task-card{% if 'URGENT' in task.title %} task-urgent{% endif %}" id="task-{{ task.id }}">
+		<div
+			class="task-card{% if 'URGENT' in task.title %} task-urgent{% endif %}"
+			id="task-{{ task.id }}"
+		>
 			<div class="task-header">
 				<span class="task-title">{{ task.title }}</span>
 				<div class="task-badges">
-					<span class="badge badge-{{ task.owner }}">{{ task.owner }}</span>
-					<span class="badge badge-status-{{ task.status }}">{{ task.status }}</span>
+					<span class="badge badge-{{ task.owner }}"
+						>{{ task.owner }}</span
+					>
+					<span class="badge badge-status-{{ task.status }}"
+						>{{ task.status }}</span
+					>
 				</div>
 			</div>
 			{% if task.due_window %}
 			<div class="task-meta">Due: {{ task.due_window }}</div>
-			{% endif %}
-			{% if task.description %}
+			{% endif %} {% if task.description %}
 			<div class="task-desc">{{ task.description }}</div>
 			{% endif %}
 			<div class="task-actions">
-				<form action="/task/{{ task.id }}/complete" method="POST" style="display:inline">
-					<button type="submit" class="btn btn-sm btn-success">✓ Complete</button>
+				<form
+					action="/task/{{ task.id }}/complete"
+					method="POST"
+					style="display: inline"
+				>
+					<button type="submit" class="btn btn-sm btn-success">
+						✓ Complete
+					</button>
 				</form>
-				<form action="/task/{{ task.id }}/skip" method="POST" style="display:inline">
-					<button type="submit" class="btn btn-sm btn-ghost">Skip</button>
+				<form
+					action="/task/{{ task.id }}/skip"
+					method="POST"
+					style="display: inline"
+				>
+					<button type="submit" class="btn btn-sm btn-ghost">
+						Skip
+					</button>
 				</form>
 			</div>
 		</div>
 		{% endfor %}
 	</div>
 </section>
-{% endif %}
-{% if completed_tasks %}
+{% endif %} {% if completed_tasks %}
 <section class="section">
-	<h2 class="section-title">Completed Tasks ({{ completed_tasks|length }})</h2>
+	<h2 class="section-title">
+		Completed Tasks ({{ completed_tasks|length }})
+	</h2>
 	<div class="tasks-list">
 		{% for task in completed_tasks %}
 		<div class="task-card task-completed">
@@ -105,22 +146,30 @@
 		{% endfor %}
 	</div>
 </section>
-{% endif %}
-{% endif %}
+{% endif %} {% endif %}
 
 <section class="section">
 	<h2 class="section-title">Care Timeline</h2>
 	{% if timeline %}
 	<div class="timeline">
 		{% for item in timeline %}
-		<div class="timeline-item timeline-{{ item.type }}" id="timeline-{{ loop.index }}">
+		<div
+			class="timeline-item timeline-{{ item.type }}"
+			id="timeline-{{ loop.index }}"
+		>
 			<div class="timeline-marker"></div>
 			<div class="timeline-content">
 				{% if item.type == 'encounter' %}
 				<div class="timeline-header">
-					<span class="badge badge-{{ item.data.author_role }}">{{ item.data.author_role }}</span>
-					<span class="timeline-author">{{ item.data.author_name }}</span>
-					<span class="timeline-date">{{ item.data.created_at[:16] }}</span>
+					<span class="badge badge-{{ item.data.author_role }}"
+						>{{ item.data.author_role }}</span
+					>
+					<span class="timeline-author"
+						>{{ item.data.author_name }}</span
+					>
+					<span class="timeline-date"
+						>{{ item.data.created_at[:16] }}</span
+					>
 				</div>
 				<div class="timeline-body">
 					<p>{{ item.data.content }}</p>
@@ -128,18 +177,31 @@
 				{% if item.data.author_role == 'provider' %}
 				<div class="timeline-actions">
 					{% if item.data.structured_summary %}
-                    <details class="structured-summary-details">
-                        <summary>🤖 AI Structured Extract</summary>
-                        <pre>{{ item.data.structured_summary }}</pre>
-                    </details>
-                    {% else %}
-                    <form action="/encounter/{{ item.data.id }}/summarize" method="POST" class="glm-stream-form" data-stream-url="/api/stream/encounter/{{ item.data.id }}/summarize" data-output="#analysis-output" style="display:inline">
-                        <button type="submit" class="btn btn-sm btn-ai">🤖 Summarize Encounter</button>
-                    </form>
-                    {% endif %}
+					<details class="structured-summary-details">
+						<summary>🤖 AI Structured Extract</summary>
+						<pre>{{ item.data.structured_summary }}</pre>
+					</details>
+					{% else %}
+					<form
+						action="/encounter/{{ item.data.id }}/summarize"
+						method="POST"
+						class="glm-stream-form"
+						data-stream-url="/api/stream/encounter/{{ item.data.id }}/summarize"
+						data-output="#analysis-output"
+						style="display: inline"
+					>
+						<button type="submit" class="btn btn-sm btn-ai">
+							🤖 Summarize Encounter
+						</button>
+					</form>
+					{% endif %}
+				</div>
+				{% endif %} {% elif item.type == 'analysis' %}
 				<div class="timeline-header">
 					<span class="badge badge-ai">🤖 AI Analysis</span>
-					<span class="timeline-date">{{ item.data.created_at[:16] }}</span>
+					<span class="timeline-date"
+						>{{ item.data.created_at[:16] }}</span
+					>
 				</div>
 				<div class="timeline-body analysis-body">
 					<div class="analysis-section">
@@ -151,34 +213,46 @@
 						<h4>Patient-Friendly Summary</h4>
 						<p>{{ item.data.patient_summary }}</p>
 					</div>
-					{% endif %}
-					{% if item.data.trend_summary %}
+					{% endif %} {% if item.data.trend_summary %}
 					<div class="analysis-section trend-section">
 						<h4>📈 Trend Analysis</h4>
 						<p>{{ item.data.trend_summary }}</p>
 					</div>
-					{% endif %}
-					{% if item.data.followup_suggestions %}
+					{% endif %} {% if item.data.followup_suggestions %}
 					<div class="analysis-section followup-section">
 						<h4>💡 Suggested Follow-up Questions</h4>
 						<ul class="followup-list">
 							{% for q in item.data.followup_suggestions %}
-							<li><a href="/patient/{{ patient.id }}/ask">{{ q }}</a></li>
+							<li>
+								<a href="/patient/{{ patient.id }}/ask"
+									>{{ q }}</a
+								>
+							</li>
 							{% endfor %}
 						</ul>
 					</div>
 					{% endif %}
-					<a href="/analysis/{{ item.data.id }}" class="analysis-detail-link">View Full Analysis →</a>
+					<a
+						href="/analysis/{{ item.data.id }}"
+						class="analysis-detail-link"
+						>View Full Analysis →</a
+					>
 				</div>
 
 				{% elif item.type == 'qa' %}
 				<div class="timeline-header">
 					<span class="badge badge-qa">❓ Patient Question</span>
-					<span class="timeline-date">{{ item.data.created_at[:16] }}</span>
+					<span class="timeline-date"
+						>{{ item.data.created_at[:16] }}</span
+					>
 				</div>
 				<div class="timeline-body qa-body">
-					<div class="qa-question"><strong>Q:</strong> {{ item.data.question }}</div>
-					<div class="qa-answer"><strong>A:</strong> {{ item.data.answer }}</div>
+					<div class="qa-question">
+						<strong>Q:</strong> {{ item.data.question }}
+					</div>
+					<div class="qa-answer">
+						<strong>A:</strong> {{ item.data.answer }}
+					</div>
 				</div>
 				{% endif %}
 			</div>
@@ -198,37 +272,35 @@
 	<div class="loading-spinner"></div>
 	<div class="loading-text">GLM 5.1 is thinking...</div>
 </div>
-{% endblock %}
-
-{% block scripts %}
+{% endblock %} {% block scripts %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    var overlay = document.getElementById('loading-overlay');
-    if (overlay) overlay.classList.remove('active');
-});
-
-var glmThinkingDots = document.getElementById('glm-thinking-dots');
-var glmReasoningText = document.getElementById('glm-reasoning-text');
-var glmReasoningSection = document.getElementById('glm-reasoning-section');
-
-document.querySelectorAll('.glm-form').forEach(function(form) {
-	form.addEventListener('submit', function() {
-		document.getElementById('loading-overlay').classList.add('active');
-		if (glmReasoningSection) {
-			glmReasoningSection.open = true;
-		}
-		if (glmThinkingDots) {
-			glmThinkingDots.style.display = 'flex';
-		}
+	document.addEventListener("DOMContentLoaded", function () {
+		var overlay = document.getElementById("loading-overlay");
+		if (overlay) overlay.classList.remove("active");
 	});
-});
 
-setInterval(function() {
-	if (window.isThinking && glmThinkingDots) {
-		glmThinkingDots.style.display = 'flex';
-	} else if (glmThinkingDots) {
-		glmThinkingDots.style.display = 'none';
-	}
-}, 100);
+	var glmThinkingDots = document.getElementById("glm-thinking-dots");
+	var glmReasoningText = document.getElementById("glm-reasoning-text");
+	var glmReasoningSection = document.getElementById("glm-reasoning-section");
+
+	document.querySelectorAll(".glm-form").forEach(function (form) {
+		form.addEventListener("submit", function () {
+			document.getElementById("loading-overlay").classList.add("active");
+			if (glmReasoningSection) {
+				glmReasoningSection.open = true;
+			}
+			if (glmThinkingDots) {
+				glmThinkingDots.style.display = "flex";
+			}
+		});
+	});
+
+	setInterval(function () {
+		if (window.isThinking && glmThinkingDots) {
+			glmThinkingDots.style.display = "flex";
+		} else if (glmThinkingDots) {
+			glmThinkingDots.style.display = "none";
+		}
+	}, 100);
 </script>
 {% endblock %}

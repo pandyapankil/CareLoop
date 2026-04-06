@@ -1,17 +1,25 @@
-{% extends "base.html" %}
-{% block title %}CareLoop — AI-Powered Care Coordination{% endblock %}
-
-{% block content %}
+{% extends "base.html" %} {% block title %}CareLoop — AI-Powered Care
+Coordination{% endblock %} {% block content %}
 <div class="hero-section">
 	<div class="hero-content">
 		<h1 class="page-title">Closing the Healthcare Coordination Gap</h1>
-		<p class="page-subtitle">CareLoop uses <strong>GLM 5.1</strong> to transform fragmented clinical notes into actionable care
-			coordination paths — with 6 distinct AI workflows, structured data extraction, and full transparency.</p>
+		<p class="page-subtitle">
+			CareLoop uses <strong>GLM 5.1</strong> to transform fragmented
+			clinical notes into actionable care coordination paths — with 6
+			distinct AI workflows, structured data extraction, and full
+			transparency.
+		</p>
 
 		<div class="hero-actions">
 			<a href="#patients" class="btn btn-accent">Explore Patients</a>
 			<div class="hero-badge">
-				<span class="badge badge-ai">GLM 5.1 Active</span>
+				{% if glm_available %}
+				<span class="badge badge-ai">✅ GLM 5.1 Connected</span>
+				{% else %}
+				<span class="badge badge-offline"
+					>⚠️ Demo Mode — Add GLM_API_KEY for live AI</span
+				>
+				{% endif %}
 			</div>
 		</div>
 	</div>
@@ -56,11 +64,15 @@
 		<div class="stat-label">Active Patients</div>
 	</div>
 	<div class="stat-card">
-		<div class="stat-number">{{ patients|map(attribute='encounter_count')|sum }}</div>
+		<div class="stat-number">
+			{{ patients|map(attribute='encounter_count')|sum }}
+		</div>
 		<div class="stat-label">Encounters</div>
 	</div>
 	<div class="stat-card">
-		<div class="stat-number">{{ patients|map(attribute='analysis_count')|sum }}</div>
+		<div class="stat-number">
+			{{ patients|map(attribute='analysis_count')|sum }}
+		</div>
 		<div class="stat-label">AI Analyses</div>
 	</div>
 	<div class="stat-card">
@@ -72,36 +84,50 @@
 <div class="section" id="patients">
 	<div class="section-header">
 		<h2 class="section-title">Patient Roster</h2>
-		<p class="text-muted">Select a patient to view their timeline or run GLM 5.1 analyses.</p>
+		<p class="text-muted">
+			Select a patient to view their timeline or run GLM 5.1 analyses.
+		</p>
 	</div>
 
 	{% if patients %}
 	<div class="patient-grid">
 		{% for patient in patients %}
-		<a href="/patient/{{ patient.id }}" class="patient-card" id="patient-{{ patient.id }}">
+		<a
+			href="/patient/{{ patient.id }}"
+			class="patient-card"
+			id="patient-{{ patient.id }}"
+		>
 			<div class="patient-card-header">
 				<div class="patient-avatar">{{ patient.name[0] }}</div>
 				<div class="patient-info">
 					<h3 class="patient-name">{{ patient.name }}</h3>
-					<span class="patient-condition">{{ patient.condition }}</span>
+					<span class="patient-condition"
+						>{{ patient.condition }}</span
+					>
 				</div>
 			</div>
 
 			<div class="patient-card-body">
 				<div class="patient-card-stats">
 					<div class="mini-stat">
-						<span class="mini-stat-value">{{ patient.encounter_count }}</span>
+						<span class="mini-stat-value"
+							>{{ patient.encounter_count }}</span
+						>
 						<span class="mini-stat-label">encounters</span>
 					</div>
 					<div class="mini-stat">
-						<span class="mini-stat-value">{{ patient.analysis_count }}</span>
+						<span class="mini-stat-value"
+							>{{ patient.analysis_count }}</span
+						>
 						<span class="mini-stat-label">analyses</span>
 					</div>
 				</div>
 			</div>
 
 			<div class="patient-card-footer">
-				<span class="view-link">Open Timeline <span class="arrow">→</span></span>
+				<span class="view-link"
+					>Open Timeline <span class="arrow">→</span></span
+				>
 			</div>
 		</a>
 		{% endfor %}
@@ -110,7 +136,10 @@
 	<div class="empty-state">
 		<div class="empty-icon">🏥</div>
 		<h2>No patients found</h2>
-		<p>Run <code>python seed.py</code> to populate the database with demonstration data.</p>
+		<p>
+			Run <code>python seed.py</code> to populate the database with
+			demonstration data.
+		</p>
 	</div>
 	{% endif %}
 </div>

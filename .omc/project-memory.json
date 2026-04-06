@@ -106,15 +106,39 @@
   },
   "hotPaths": [
     {
-      "path": "app/routers/__init__.py",
-      "accessCount": 1,
-      "lastAccessed": 1775444398148,
+      "path": "README.md",
+      "accessCount": 2,
+      "lastAccessed": 1775467294461,
       "type": "file"
     },
     {
-      "path": "README.md",
+      "path": "app/services/glm_service.py",
+      "accessCount": 2,
+      "lastAccessed": 1775467294532,
+      "type": "file"
+    },
+    {
+      "path": "app/main.py",
+      "accessCount": 2,
+      "lastAccessed": 1775467294577,
+      "type": "file"
+    },
+    {
+      "path": "tests/test_glm_flow.py",
+      "accessCount": 2,
+      "lastAccessed": 1775467335989,
+      "type": "file"
+    },
+    {
+      "path": "app/database.py",
+      "accessCount": 2,
+      "lastAccessed": 1775467350661,
+      "type": "file"
+    },
+    {
+      "path": "app/routers/__init__.py",
       "accessCount": 1,
-      "lastAccessed": 1775444398412,
+      "lastAccessed": 1775444398148,
       "type": "file"
     },
     {
@@ -124,33 +148,9 @@
       "type": "file"
     },
     {
-      "path": "tests/test_glm_flow.py",
-      "accessCount": 1,
-      "lastAccessed": 1775444398521,
-      "type": "file"
-    },
-    {
-      "path": "app/main.py",
-      "accessCount": 1,
-      "lastAccessed": 1775444398586,
-      "type": "file"
-    },
-    {
-      "path": "app/database.py",
-      "accessCount": 1,
-      "lastAccessed": 1775444425031,
-      "type": "file"
-    },
-    {
       "path": "seed.py",
       "accessCount": 1,
       "lastAccessed": 1775444425148,
-      "type": "file"
-    },
-    {
-      "path": "app/services/glm_service.py",
-      "accessCount": 1,
-      "lastAccessed": 1775444425346,
       "type": "file"
     },
     {
@@ -217,6 +217,48 @@
       "path": "app/routers/settings.py",
       "accessCount": 1,
       "lastAccessed": 1775444441551,
+      "type": "file"
+    },
+    {
+      "path": ".env.example",
+      "accessCount": 1,
+      "lastAccessed": 1775467294392,
+      "type": "file"
+    },
+    {
+      "path": "app/templates/",
+      "accessCount": 1,
+      "lastAccessed": 1775467336051,
+      "type": "directory"
+    },
+    {
+      "path": "app/templates/base.html",
+      "accessCount": 1,
+      "lastAccessed": 1775467350399,
+      "type": "file"
+    },
+    {
+      "path": "app/templates/patient.html",
+      "accessCount": 1,
+      "lastAccessed": 1775467350570,
+      "type": "file"
+    },
+    {
+      "path": "app/static/",
+      "accessCount": 1,
+      "lastAccessed": 1775467389186,
+      "type": "directory"
+    },
+    {
+      "path": "app/templates/usage.html",
+      "accessCount": 1,
+      "lastAccessed": 1775467392993,
+      "type": "file"
+    },
+    {
+      "path": "app/static/style.css",
+      "accessCount": 1,
+      "lastAccessed": 1775467393055,
       "type": "file"
     }
   ],

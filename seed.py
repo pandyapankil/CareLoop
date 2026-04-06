@@ -2,7 +2,13 @@
 
 import uuid
 from datetime import datetime, timedelta, timezone
-from app.database import init_db, get_db
+
+from app.database import get_db, init_db
+
+# Fixed deterministic UUIDs — stable across every redeploy
+P1_ID = "a1000000-0000-0000-0000-000000000001"  # Maria Santos
+P2_ID = "a2000000-0000-0000-0000-000000000002"  # Robert Kim
+P3_ID = "a3000000-0000-0000-0000-000000000003"  # Eleanor Davis
 
 
 def seed():
@@ -17,7 +23,7 @@ def seed():
         now = datetime.now(timezone.utc)
 
         # ─── Patient 1: Maria Santos ───────────────────────────
-        p1_id = str(uuid.uuid4())
+        p1_id = P1_ID
         db.execute(
             "INSERT INTO patients (id, name, date_of_birth, condition, notes, created_at) VALUES (?, ?, ?, ?, ?, ?)",
             (
@@ -115,7 +121,7 @@ def seed():
         )
 
         # ─── Patient 2: Robert Kim ────────────────────────────
-        p2_id = str(uuid.uuid4())
+        p2_id = P2_ID
         db.execute(
             "INSERT INTO patients (id, name, date_of_birth, condition, notes, created_at) VALUES (?, ?, ?, ?, ?, ?)",
             (
@@ -196,7 +202,7 @@ def seed():
         )
 
         # ─── Patient 3: Eleanor Davis ─────────────────────────
-        p3_id = str(uuid.uuid4())
+        p3_id = P3_ID
         db.execute(
             "INSERT INTO patients (id, name, date_of_birth, condition, notes, created_at) VALUES (?, ?, ?, ?, ?, ?)",
             (

@@ -1,316 +1,444 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="CareLoop — AI-powered care coordination using GLM 5.1">
-    <title>{% block title %}CareLoop{% endblock %}</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/style.css">
-</head>
-<body>
-    <nav class="navbar">
-        <div class="nav-container">
-            <a href="/" class="nav-brand">
-                <span class="brand-icon">⟳</span>
-                <span class="brand-text">CareLoop</span>
-            </a>
-            <div class="nav-status">
-                <span class="glm-thinking-badge" id="glm-thinking-badge" style="display:none">
-                    <span class="glmthinking-dot"></span>
-                    <span class="glmthinking-dot"></span>
-                    <span class="glmthinking-dot"></span>
-                    GLM 5.1 Thinking
-                </span>
-                {% if glm_available %}
-                <span class="status-badge status-online" id="glm-status">GLM 5.1 Connected</span>
-                {% else %}
-                <span class="status-badge status-offline" id="glm-status">GLM 5.1 Demo Mode</span>
-                {% endif %}
-            </div>
-        </div>
-    </nav>
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<meta
+			name="description"
+			content="CareLoop — AI-powered care coordination using GLM 5.1"
+		/>
+		<title>{% block title %}CareLoop{% endblock %}</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap"
+			rel="stylesheet"
+		/>
+		<link rel="stylesheet" href="/static/style.css" />
+	</head>
 
-    <main class="main-content">
-        <div class="container">
-            {% block content %}{% endblock %}
-        </div>
-    </main>
+	<body>
+		<nav class="navbar">
+			<div class="nav-container">
+				<a href="/" class="nav-brand">
+					<span class="brand-icon">⟳</span>
+					<span class="brand-text">CareLoop</span>
+				</a>
+				<div class="nav-status">
+					<span
+						class="glm-thinking-badge"
+						id="glm-thinking-badge"
+						style="display: none"
+					>
+						<span class="glmthinking-dot"></span>
+						<span class="glmthinking-dot"></span>
+						<span class="glmthinking-dot"></span>
+						GLM 5.1 Thinking
+					</span>
+					{% if glm_available %}
+					<span class="status-badge status-online" id="glm-status"
+						>GLM 5.1 Connected</span
+					>
+					{% else %}
+					<span class="status-badge status-offline" id="glm-status"
+						>GLM 5.1 Demo Mode</span
+					>
+					{% endif %}
+				</div>
+			</div>
+		</nav>
 
-    <footer class="footer">
-        <div class="container">
-            <p>CareLoop — AI that closes the care coordination gap &middot; Powered by <strong>GLM 5.1</strong></p>
-        </div>
-    </footer>
+		<main class="main-content">
+			<div class="container">{% block content %}{% endblock %}</div>
+		</main>
 
-    <script>
-    const glmThinkingBadge = document.getElementById('glm-thinking-badge');
-    window.isThinking = false;
-    window.tasksCreatedCount = 0;
+		<footer class="footer">
+			<div class="container">
+				<p>
+					CareLoop — AI that closes the care coordination gap &middot;
+					Powered by <strong>GLM 5.1</strong>
+				</p>
+			</div>
+		</footer>
 
-    function showThinkingBadge() {
-        if (glmThinkingBadge) glmThinkingBadge.style.display = 'flex';
-    }
-    function hideThinkingBadge() {
-        if (glmThinkingBadge) glmThinkingBadge.style.display = 'none';
-    }
+		<script>
+			const glmThinkingBadge =
+				document.getElementById("glm-thinking-badge");
+			window.isThinking = false;
+			window.tasksCreatedCount = 0;
 
-    function renderMarkdown(text) {
-        if (!text) return '';
-        let html = text
-            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        html = html.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code class="lang-$1">$2</code></pre>');
-        html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
-        html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-        html = html.replace(/#{1,3}\s+(.+)/g, '<strong style="font-size:1.1em;color:var(--accent)">$1</strong>');
-        html = html.replace(/^[-*]\s+(.+)/gm, '<li>$1</li>');
-        html = html.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
-        html = html.replace(/\n{2,}/g, '</p><p>');
-        html = html.replace(/\n/g, '<br>');
-        return '<p>' + html + '</p>';
-    }
+			function showThinkingBadge() {
+				if (glmThinkingBadge) glmThinkingBadge.style.display = "flex";
+			}
+			function hideThinkingBadge() {
+				if (glmThinkingBadge) glmThinkingBadge.style.display = "none";
+			}
 
-    function showToast(message, type = 'thinking') {
-        let container = document.getElementById('toast-container');
-        if (!container) {
-            container = document.createElement('div');
-            container.id = 'toast-container';
-            container.className = 'toast-container';
-            document.body.appendChild(container);
-        }
-        const toast = document.createElement('div');
-        toast.className = `toast toast-${type}`;
-        toast.innerHTML = message;
-        container.appendChild(toast);
-        setTimeout(() => toast.classList.add('toast-show'), 10);
-        setTimeout(() => {
-            toast.classList.remove('toast-show');
-            setTimeout(() => toast.remove(), 300);
-        }, 4000);
-    }
+			function renderMarkdown(text) {
+				if (!text) return "";
+				let html = text
+					.replace(/&/g, "&amp;")
+					.replace(/</g, "&lt;")
+					.replace(/>/g, "&gt;");
+				html = html.replace(
+					/```(\w*)\n([\s\S]*?)```/g,
+					'<pre><code class="lang-$1">$2</code></pre>',
+				);
+				html = html.replace(/`([^`]+)`/g, "<code>$1</code>");
+				html = html.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+				html = html.replace(
+					/#{1,3}\s+(.+)/g,
+					'<strong style="font-size:1.1em;color:var(--accent)">$1</strong>',
+				);
+				html = html.replace(/^[-*]\s+(.+)/gm, "<li>$1</li>");
+				html = html.replace(/(<li>.*<\/li>)/s, "<ul>$1</ul>");
+				html = html.replace(/\n{2,}/g, "</p><p>");
+				html = html.replace(/\n/g, "<br>");
+				return "<p>" + html + "</p>";
+			}
 
-    function streamGLM(url, outputSelector) {
-        window.isThinking = true;
-        window.tasksCreatedCount = 0;
-        showThinkingBadge();
+			function showToast(message, type = "thinking") {
+				let container = document.getElementById("toast-container");
+				if (!container) {
+					container = document.createElement("div");
+					container.id = "toast-container";
+					container.className = "toast-container";
+					document.body.appendChild(container);
+				}
+				const toast = document.createElement("div");
+				toast.className = `toast toast-${type}`;
+				toast.innerHTML = message;
+				container.appendChild(toast);
+				setTimeout(() => toast.classList.add("toast-show"), 10);
+				setTimeout(() => {
+					toast.classList.remove("toast-show");
+					setTimeout(() => toast.remove(), 300);
+				}, 4000);
+			}
 
-        const outputEl = document.querySelector(outputSelector) || document.getElementById('analysis-output');
-        const thinkingEl = document.getElementById('glm-reasoning-text');
-        const reasoningSection = document.getElementById('glm-reasoning-section');
-        const thinkingDots = document.getElementById('glm-thinking-dots');
+			function streamGLM(url, outputSelector) {
+				window.isThinking = true;
+				window.tasksCreatedCount = 0;
+				showThinkingBadge();
 
-        if (reasoningSection) reasoningSection.open = true;
-        if (thinkingDots) thinkingDots.style.display = 'flex';
-        if (thinkingEl) thinkingEl.textContent = '';
-        if (outputEl) outputEl.innerHTML = '<div class="thinking" style="display:flex"><span class="think-dot"></span><span class="think-dot"></span><span class="think-dot"></span></div>';
+				const outputEl =
+					document.querySelector(outputSelector) ||
+					document.getElementById("analysis-output");
+				const thinkingEl =
+					document.getElementById("glm-reasoning-text");
+				const reasoningSection = document.getElementById(
+					"glm-reasoning-section",
+				);
+				const thinkingDots =
+					document.getElementById("glm-thinking-dots");
 
-        let thinking = '';
-        let content = '';
-        const evtSource = new EventSource(url);
+				if (reasoningSection) reasoningSection.open = true;
+				if (thinkingDots) thinkingDots.style.display = "flex";
+				if (thinkingEl) {
+					thinkingEl.textContent = "";
+					if (thinkingEl.parentElement)
+						thinkingEl.parentElement.style.display = "block";
+				}
+				if (outputEl)
+					outputEl.innerHTML =
+						'<div class="thinking" style="display:flex"><span class="think-dot"></span><span class="think-dot"></span><span class="think-dot"></span></div>';
 
-        evtSource.onmessage = (e) => {
-            const data = JSON.parse(e.data);
-            if (data.event === 'thinking') {
-                thinking += data.content;
-                if (thinkingEl) thinkingEl.textContent = thinking;
-            } else if (data.event === 'content') {
-                content += data.content;
-                if (outputEl) outputEl.innerHTML = renderMarkdown(content);
-            } else if (data.event === 'tool_call') {
-                const name = data.tool_name;
-                const args = data.tool_args || {};
-                if (name === 'create_task') {
-                    window.tasksCreatedCount++;
-                    showToast(`🤖 Creating task: ${args.title || 'New task'}...`, 'thinking');
-                } else if (name === 'send_message') {
-                    showToast(`📨 Sending message to care team...`, 'thinking');
-                } else if (name === 'schedule_reminder') {
-                    showToast(`⏰ Scheduling reminder...`, 'thinking');
-                } else if (name === 'get_patient_history') {
-                    showToast(`📋 Fetching patient history...`, 'thinking');
-                } else {
-                    showToast(`🔧 Executing: ${name}...`, 'thinking');
-                }
-            } else if (data.event === 'tool_result') {
-                showToast(`✅ ${data.tool_name} complete!`, 'success');
-            } else if (data.event === 'done') {
-                evtSource.close();
-                window.isThinking = false;
-                hideThinkingBadge();
-                if (thinkingDots) thinkingDots.style.display = 'none';
-                const tc = window.tasksCreatedCount || 0;
-                if (tc > 0) {
-                    showToast(`🎉 Done! ${tc} task${tc > 1 ? 's' : ''} created autonomously.`, 'success');
-                } else {
-                    showToast('✨ GLM 5.1 analysis complete!', 'success');
-                }
-                try {
-                    const result = JSON.parse(data.content);
-                    if (result.redirect) {
-                        setTimeout(() => { window.location.href = result.redirect; }, 800);
-                        return;
-                    }
-                } catch {}
-                setTimeout(() => window.location.reload(), 1500);
-            } else if (data.event === 'error') {
-                evtSource.close();
-                window.isThinking = false;
-                hideThinkingBadge();
-                if (thinkingDots) thinkingDots.style.display = 'none';
-                if (outputEl) outputEl.innerHTML = `<div class="analysis-card" style="border-left:3px solid var(--risk-high)"><p>GLM 5.1 is in demo mode — connect an API key for live AI. Falling back to mock data...</p></div>`;
-                showToast('⚠️ Using demo mode (no API key)', 'error');
-                setTimeout(() => window.location.reload(), 2000);
-            }
-        };
+				let thinking = "";
+				let content = "";
+				const evtSource = new EventSource(url);
 
-        evtSource.onerror = () => {
-            evtSource.close();
-            window.isThinking = false;
-            hideThinkingBadge();
-            if (thinkingDots) thinkingDots.style.display = 'none';
-            setTimeout(() => window.location.reload(), 1500);
-        };
-    }
+				evtSource.onmessage = (e) => {
+					const data = JSON.parse(e.data);
+					if (data.event === "thinking") {
+						thinking += data.content;
+						if (thinkingEl) thinkingEl.textContent = thinking;
+					} else if (data.event === "content") {
+						content += data.content;
+						if (outputEl)
+							outputEl.innerHTML = renderMarkdown(content);
+					} else if (data.event === "tool_call") {
+						const name = data.tool_name;
+						const args = data.tool_args || {};
+						if (name === "create_task") {
+							window.tasksCreatedCount++;
+							showToast(
+								`🤖 Creating task: ${args.title || "New task"}...`,
+								"thinking",
+							);
+						} else if (name === "send_message") {
+							showToast(
+								`📨 Sending message to care team...`,
+								"thinking",
+							);
+						} else if (name === "schedule_reminder") {
+							showToast(`⏰ Scheduling reminder...`, "thinking");
+						} else if (name === "get_patient_history") {
+							showToast(
+								`📋 Fetching patient history...`,
+								"thinking",
+							);
+						} else {
+							showToast(`🔧 Executing: ${name}...`, "thinking");
+						}
+					} else if (data.event === "tool_result") {
+						showToast(`✅ ${data.tool_name} complete!`, "success");
+					} else if (data.event === "done") {
+						evtSource.close();
+						window.isThinking = false;
+						hideThinkingBadge();
+						if (thinkingDots) thinkingDots.style.display = "none";
+						// Auto-hide reasoning section if no thinking content was received
+						if (
+							thinkingEl &&
+							!thinkingEl.textContent.trim() &&
+							reasoningSection
+						) {
+							reasoningSection.open = false;
+							reasoningSection.style.display = "none";
+						}
+						if (
+							thinkingEl &&
+							thinkingEl.textContent.trim() === ""
+						) {
+							if (reasoningSection) reasoningSection.open = false;
+							// Optionally hide the reasoning text box specifically if the section is kept open for other reasons
+							if (thinkingEl.parentElement)
+								thinkingEl.parentElement.style.display = "none";
+						}
+						const tc = window.tasksCreatedCount || 0;
+						if (tc > 0) {
+							showToast(
+								`🎉 Done! ${tc} task${tc > 1 ? "s" : ""} created autonomously.`,
+								"success",
+							);
+						} else {
+							showToast(
+								"✨ GLM 5.1 analysis complete!",
+								"success",
+							);
+						}
+						try {
+							const result = JSON.parse(data.content);
+							if (result.redirect) {
+								setTimeout(() => {
+									window.location.href = result.redirect;
+								}, 800);
+								return;
+							}
+						} catch {}
+						setTimeout(() => window.location.reload(), 1500);
+					} else if (data.event === "error") {
+						evtSource.close();
+						window.isThinking = false;
+						hideThinkingBadge();
+						if (thinkingDots) thinkingDots.style.display = "none";
+						if (outputEl)
+							outputEl.innerHTML = `<div class="analysis-card" style="border-left:3px solid var(--risk-high)"><p>GLM 5.1 is in demo mode — connect an API key for live AI. Falling back to mock data...</p></div>`;
+						showToast("⚠️ Using demo mode (no API key)", "error");
+						setTimeout(() => window.location.reload(), 2000);
+					}
+				};
 
-    document.addEventListener('DOMContentLoaded', () => {
-        document.querySelectorAll('.glm-stream-form').forEach(form => {
-            form.addEventListener('submit', function(e) {
-                e.preventDefault();
-                const streamUrl = form.dataset.streamUrl;
-                const outputSel = form.dataset.output || '#analysis-output';
-                if (streamUrl) {
-                    streamGLM(streamUrl, outputSel);
-                } else {
-                    const patientId = form.action.match(/patient\/([^/]+)/)?.[1];
-                    if (patientId) streamGLM(`/api/stream/analyze/${patientId}`, outputSel);
-                }
-            });
-        });
-    });
-    </script>
-    
-    <style>
-    .thinking {
-        display: flex;
-        gap: 4px;
-        padding: 12px;
-        align-items: center;
-    }
-    .think-dot {
-        width: 8px;
-        height: 8px;
-        background: #6366f1;
-        border-radius: 50%;
-        animation: think-pulse 1.4s infinite ease-in-out;
-    }
-    .think-dot:nth-child(2) { animation-delay: 0.2s; }
-    .think-dot:nth-child(3) { animation-delay: 0.4s; }
-    @keyframes think-pulse {
-        0%, 80%, 100% { transform: scale(0.6); opacity: 0.5; }
-        40% { transform: scale(1); opacity: 1; }
-    }
-    .glm-thinking-badge {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        padding: 6px 12px;
-        background: linear-gradient(135deg, #6366f1, #8b5cf6);
-        color: white;
-        border-radius: 20px;
-        font-size: 12px;
-        font-weight: 600;
-        animation: glmthinking-pulse 2s ease-in-out infinite;
-    }
-    .glmthinking-dot {
-        width: 6px;
-        height: 6px;
-        background: white;
-        border-radius: 50%;
-        animation: think-pulse 1.4s infinite ease-in-out;
-    }
-    .glmthinking-dot:nth-child(2) { animation-delay: 0.2s; }
-    .glmthinking-dot:nth-child(3) { animation-delay: 0.4s; }
-    @keyframes glmthinking-pulse {
-        0%, 100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4); }
-        50% { box-shadow: 0 0 0 8px rgba(99, 102, 241, 0); }
-    }
-    .toast-container {
-        position: fixed;
-        top: 80px;
-        right: 20px;
-        z-index: 10000;
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-    }
-    .toast {
-        padding: 14px 20px;
-        border-radius: 8px;
-        font-size: 14px;
-        font-weight: 500;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-        transform: translateX(120%);
-        transition: transform 0.3s ease;
-        max-width: 350px;
-    }
-    .toast-show {
-        transform: translateX(0);
-    }
-    .toast-thinking {
-        background: linear-gradient(135deg, #3b82f6, #6366f1);
-        color: white;
-    }
-    .toast-success {
-        background: linear-gradient(135deg, #10b981, #059669);
-        color: white;
-    }
-    .toast-error {
-        background: linear-gradient(135deg, #ef4444, #dc2626);
-        color: white;
-    }
-    .toast-info {
-        background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-        color: white;
-    }
-    .analysis-output {
-        margin-top: 1rem;
-        padding: 1rem;
-        background: rgba(0, 0, 0, 0.2);
-        border-radius: var(--radius-sm, 10px);
-        min-height: 60px;
-        line-height: 1.7;
-    }
-    .analysis-output p { margin-bottom: 0.5rem; }
-    .analysis-output pre {
-        background: rgba(0, 0, 0, 0.4);
-        padding: 0.75rem;
-        border-radius: 6px;
-        overflow-x: auto;
-        font-size: 0.85rem;
-    }
-    .analysis-output code {
-        background: rgba(139, 92, 246, 0.2);
-        padding: 0.1rem 0.3rem;
-        border-radius: 3px;
-        font-size: 0.85em;
-    }
-    .analysis-output pre code {
-        background: none;
-        padding: 0;
-    }
-    .analysis-output li {
-        margin-left: 1rem;
-        margin-bottom: 0.25rem;
-    }
-    .analysis-output strong {
-        color: var(--accent);
-    }
-    </style>
+				evtSource.onerror = () => {
+					evtSource.close();
+					window.isThinking = false;
+					hideThinkingBadge();
+					if (thinkingDots) thinkingDots.style.display = "none";
+					setTimeout(() => window.location.reload(), 1500);
+				};
+			}
 
-    {% block scripts %}{% endblock %}
-    
-    {% include "onboarding.html" %}
-</body>
+			document.addEventListener("DOMContentLoaded", () => {
+				document
+					.querySelectorAll(".glm-stream-form")
+					.forEach((form) => {
+						form.addEventListener("submit", function (e) {
+							e.preventDefault();
+							const streamUrl = form.dataset.streamUrl;
+							const outputSel =
+								form.dataset.output || "#analysis-output";
+							if (streamUrl) {
+								streamGLM(streamUrl, outputSel);
+							} else {
+								const patientId =
+									form.action.match(/patient\/([^/]+)/)?.[1];
+								if (patientId)
+									streamGLM(
+										`/api/stream/analyze/${patientId}`,
+										outputSel,
+									);
+							}
+						});
+					});
+			});
+		</script>
+
+		<style>
+			.thinking {
+				display: flex;
+				gap: 4px;
+				padding: 12px;
+				align-items: center;
+			}
+
+			.think-dot {
+				width: 8px;
+				height: 8px;
+				background: #6366f1;
+				border-radius: 50%;
+				animation: think-pulse 1.4s infinite ease-in-out;
+			}
+
+			.think-dot:nth-child(2) {
+				animation-delay: 0.2s;
+			}
+
+			.think-dot:nth-child(3) {
+				animation-delay: 0.4s;
+			}
+
+			@keyframes think-pulse {
+				0%,
+				80%,
+				100% {
+					transform: scale(0.6);
+					opacity: 0.5;
+				}
+
+				40% {
+					transform: scale(1);
+					opacity: 1;
+				}
+			}
+
+			.glm-thinking-badge {
+				display: flex;
+				align-items: center;
+				gap: 6px;
+				padding: 6px 12px;
+				background: linear-gradient(135deg, #6366f1, #8b5cf6);
+				color: white;
+				border-radius: 20px;
+				font-size: 12px;
+				font-weight: 600;
+				animation: glmthinking-pulse 2s ease-in-out infinite;
+			}
+
+			.glmthinking-dot {
+				width: 6px;
+				height: 6px;
+				background: white;
+				border-radius: 50%;
+				animation: think-pulse 1.4s infinite ease-in-out;
+			}
+
+			.glmthinking-dot:nth-child(2) {
+				animation-delay: 0.2s;
+			}
+
+			.glmthinking-dot:nth-child(3) {
+				animation-delay: 0.4s;
+			}
+
+			@keyframes glmthinking-pulse {
+				0%,
+				100% {
+					box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4);
+				}
+
+				50% {
+					box-shadow: 0 0 0 8px rgba(99, 102, 241, 0);
+				}
+			}
+
+			.toast-container {
+				position: fixed;
+				top: 80px;
+				right: 20px;
+				z-index: 10000;
+				display: flex;
+				flex-direction: column;
+				gap: 10px;
+			}
+
+			.toast {
+				padding: 14px 20px;
+				border-radius: 8px;
+				font-size: 14px;
+				font-weight: 500;
+				box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+				transform: translateX(120%);
+				transition: transform 0.3s ease;
+				max-width: 350px;
+			}
+
+			.toast-show {
+				transform: translateX(0);
+			}
+
+			.toast-thinking {
+				background: linear-gradient(135deg, #3b82f6, #6366f1);
+				color: white;
+			}
+
+			.toast-success {
+				background: linear-gradient(135deg, #10b981, #059669);
+				color: white;
+			}
+
+			.toast-error {
+				background: linear-gradient(135deg, #ef4444, #dc2626);
+				color: white;
+			}
+
+			.toast-info {
+				background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+				color: white;
+			}
+
+			.analysis-output {
+				margin-top: 1rem;
+				padding: 1rem;
+				background: rgba(0, 0, 0, 0.2);
+				border-radius: var(--radius-sm, 10px);
+				min-height: 60px;
+				line-height: 1.7;
+			}
+
+			.analysis-output p {
+				margin-bottom: 0.5rem;
+			}
+
+			.analysis-output pre {
+				background: rgba(0, 0, 0, 0.4);
+				padding: 0.75rem;
+				border-radius: 6px;
+				overflow-x: auto;
+				font-size: 0.85rem;
+			}
+
+			.analysis-output code {
+				background: rgba(139, 92, 246, 0.2);
+				padding: 0.1rem 0.3rem;
+				border-radius: 3px;
+				font-size: 0.85em;
+			}
+
+			.analysis-output pre code {
+				background: none;
+				padding: 0;
+			}
+
+			.analysis-output li {
+				margin-left: 1rem;
+				margin-bottom: 0.25rem;
+			}
+
+			.analysis-output strong {
+				color: var(--accent);
+			}
+		</style>
+
+		{% block scripts %}{% endblock %} {% include "onboarding.html" %}
+	</body>
 </html>

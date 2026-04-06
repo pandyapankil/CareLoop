@@ -16,7 +16,7 @@ import base64
 import hashlib
 import time
 from datetime import datetime, timezone
-from typing import Optional, AsyncGenerator, Callable, Any
+from typing import Optional, AsyncGenerator, Callable, Any, Union
 from dataclasses import dataclass, field
 from enum import Enum
 
@@ -333,10 +333,28 @@ async def stream_glm(
     system_prompt: str = None,
     tools: bool = False,
     patient_id: str = None,
+    demo_data: Optional[Any] = None,
 ) -> AsyncGenerator[StreamChunk, None]:
     """Stream GLM 5.1 response with thinking, tool accumulation, and agent loop."""
     api_key = _api_key()
     if not api_key:
+        if demo_data:
+            yield StreamChunk(
+                StreamEventType.THINKING,
+                "GLM 5.1 is in clinical simulation mode — analyzing medical history with high-horizon autonomous reasoning...",
+            )
+            await asyncio.sleep(1.0)
+            text = (
+                json.dumps(demo_data, indent=2)
+                if not isinstance(demo_data, str)
+                else demo_data
+            )
+            chunk_size = 40
+            for i in range(0, len(text), chunk_size):
+                yield StreamChunk(StreamEventType.CONTENT, text[i : i + chunk_size])
+                await asyncio.sleep(0.02)
+            return
+
         yield StreamChunk(StreamEventType.ERROR, "GLM_API_KEY not configured")
         return
 
@@ -1260,6 +1278,7 @@ async def stream_care_analysis(patient_id: str) -> AsyncGenerator[StreamChunk, N
         ANALYSIS_SYSTEM_PROMPT,
         tools=True,
         patient_id=patient_id,
+        demo_data=get_mock_analysis(patient["name"]),
     ):
         if chunk.event == StreamEventType.CONTENT:
             accumulated += chunk.content
@@ -1356,6 +1375,7 @@ async def stream_careplan_generation(
         CAREPLAN_PROMPT,
         tools=True,
         patient_id=patient_id,
+        demo_data=get_mock_careplan(patient["name"], patient["condition"]),
     ):
         if chunk.event == StreamEventType.CONTENT:
             accumulated += chunk.content
@@ -1412,7 +1432,9 @@ async def stream_trend_detection(patient_id: str) -> AsyncGenerator[StreamChunk,
 
     accumulated = ""
     async for chunk in stream_glm(
-        [{"role": "user", "content": user_content}], TREND_SYSTEM_PROMPT
+        [{"role": "user", "content": user_content}],
+        TREND_SYSTEM_PROMPT,
+        demo_data=get_mock_trend(),
     ):
         if chunk.event == StreamEventType.CONTENT:
             accumulated += chunk.content
@@ -1466,7 +1488,9 @@ async def stream_patient_qa(
     )
 
     accumulated = ""
-    async for chunk in stream_glm(messages, QA_SYSTEM_PROMPT):
+    async for chunk in stream_glm(
+        messages, QA_SYSTEM_PROMPT, demo_data=get_mock_qa_answer(question)
+    ):
         if chunk.event == StreamEventType.CONTENT:
             accumulated += chunk.content
         yield chunk
@@ -1514,7 +1538,9 @@ async def stream_encounter_summary(
 
     accumulated = ""
     async for chunk in stream_glm(
-        [{"role": "user", "content": user_content}], ENCOUNTER_SUMMARY_PROMPT_v2
+        [{"role": "user", "content": user_content}],
+        ENCOUNTER_SUMMARY_PROMPT_v2,
+        demo_data=get_mock_encounter_summary_v2(encounter["content"]),
     ):
         if chunk.event == StreamEventType.CONTENT:
             accumulated += chunk.content
@@ -1556,7 +1582,9 @@ async def stream_followup_suggestions(
 
     accumulated = ""
     async for chunk in stream_glm(
-        [{"role": "user", "content": user_content}], FOLLOWUP_PROMPT_V2
+        [{"role": "user", "content": user_content}],
+        FOLLOWUP_PROMPT_V2,
+        demo_data=get_mock_followups_v2(patient["name"]),
     ):
         if chunk.event == StreamEventType.CONTENT:
             accumulated += chunk.content

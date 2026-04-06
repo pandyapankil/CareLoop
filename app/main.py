@@ -1,38 +1,39 @@
 """CareLoop — FastAPI application entry point."""
 
-import os
 import json
+import os
 import uuid
-from pathlib import Path
-from datetime import datetime, timezone
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
+from pathlib import Path
+
 from dotenv import load_dotenv
 
 load_dotenv()
 
-from fastapi import FastAPI, Request, Form
-from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
+from fastapi import FastAPI, Form, Request
 from fastapi.responses import (
     HTMLResponse,
     JSONResponse,
     RedirectResponse,
     StreamingResponse,
 )
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 
-from app.database import init_db, get_db
+from app.database import get_db, init_db
 from app.routers import (
-    symptoms,
-    messages,
-    notifications,
-    auth,
+    analytics,
     appointments,
-    medications,
-    documents,
+    auth,
     careteam,
     dashboard,
-    analytics,
+    documents,
+    medications,
+    messages,
+    notifications,
     settings,
+    symptoms,
 )
 
 
@@ -70,6 +71,16 @@ for r in [
 
 
 # ─── Health Check ────────────────────────────────────────────
+@app.get("/login", response_class=HTMLResponse)
+async def login_redirect():
+    return RedirectResponse("/auth/login", status_code=301)
+
+
+@app.get("/register", response_class=HTMLResponse)
+async def register_redirect():
+    return RedirectResponse("/auth/register", status_code=301)
+
+
 @app.get("/health")
 async def health_check():
     return JSONResponse(
@@ -96,46 +107,10 @@ async def usage_page(request: Request):
 # ─── GLM 5.1 Streaming Analysis ────────────────────────────────
 @app.get("/api/stream/analyze/{patient_id}")
 async def stream_analysis(patient_id: str):
-    from app.services.glm_service import (
-        stream_glm,
-        ANALYSIS_SYSTEM_PROMPT,
-        ANALYSIS_TEMPLATE,
-        get_db,
-    )
-
-    with get_db() as db:
-        patient = db.execute(
-            "SELECT * FROM patients WHERE id = ?", (patient_id,)
-        ).fetchone()
-        if not patient:
-            return JSONResponse({"error": "Patient not found"}, status_code=404)
-
-        encounters = db.execute(
-            "SELECT * FROM encounters WHERE patient_id = ? ORDER BY created_at ASC",
-            (patient_id,),
-        ).fetchall()
-
-        encounter_text = "\n".join(
-            f"[{e['created_at']}] {e['author_role'].upper()}: {e['content']}"
-            for e in encounters
-        )
-
-        user_content = ANALYSIS_TEMPLATE.format(
-            name=patient["name"],
-            condition=patient["condition"],
-            notes=patient["notes"] or "N/A",
-            encounters=encounter_text,
-        )
+    from app.services.glm_service import stream_care_analysis
 
     async def generate():
-        from app.services.glm_service import StreamEventType
-
-        async for chunk in stream_glm(
-            [{"role": "user", "content": user_content}],
-            ANALYSIS_SYSTEM_PROMPT,
-            tools=True,
-            patient_id=patient_id,
-        ):
+        async for chunk in stream_care_analysis(patient_id):
             chunk_data = {"event": chunk.event, "content": chunk.content}
             if chunk.tool_name:
                 chunk_data["tool_name"] = chunk.tool_name
@@ -148,7 +123,7 @@ async def stream_analysis(patient_id: str):
 # ─── GLM 5.1 Streaming Care Plan ──────────────────────────
 @app.get("/api/stream/careplan/{patient_id}")
 async def stream_careplan(patient_id: str):
-    from app.services.glm_service import stream_careplan_generation, StreamEventType
+    from app.services.glm_service import StreamEventType, stream_careplan_generation
 
     async def generate():
         async for chunk in stream_careplan_generation(patient_id):
@@ -164,7 +139,7 @@ async def stream_careplan(patient_id: str):
 # ─── GLM 5.1 Streaming Trends ────────────────────────────
 @app.get("/api/stream/trends/{patient_id}")
 async def stream_trends(patient_id: str):
-    from app.services.glm_service import stream_trend_detection, StreamEventType
+    from app.services.glm_service import StreamEventType, stream_trend_detection
 
     async def generate():
         async for chunk in stream_trend_detection(patient_id):
@@ -177,7 +152,7 @@ async def stream_trends(patient_id: str):
 # ─── GLM 5.1 Streaming Q&A ───────────────────────────────
 @app.get("/api/stream/qa/{patient_id}")
 async def stream_qa(patient_id: str, question: str = ""):
-    from app.services.glm_service import stream_patient_qa, StreamEventType
+    from app.services.glm_service import StreamEventType, stream_patient_qa
 
     if not question:
         return JSONResponse({"error": "Question required"}, status_code=400)
@@ -255,7 +230,14 @@ async def patient_timeline(request: Request, patient_id: str):
             "SELECT * FROM patients WHERE id = ?", (patient_id,)
         ).fetchone()
         if not patient:
-            return HTMLResponse("<h1>Patient not found</h1>", status_code=404)
+            return HTMLResponse(
+                '<html><body style="font-family:sans-serif;text-align:center;padding:4rem;">'
+                "<h2>Patient not found</h2>"
+                "<p>This patient may no longer exist in the current session.</p>"
+                '<a href="/" style="color:#6366f1;font-weight:600;">← Back to Patient Roster</a>'
+                "</body></html>",
+                status_code=404,
+            )
 
         encounters = db.execute(
             "SELECT * FROM encounters WHERE patient_id = ? ORDER BY created_at DESC",
