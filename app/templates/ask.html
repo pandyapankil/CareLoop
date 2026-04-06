@@ -5,11 +5,11 @@
 <div class="page-header">
 	<a href="/patient/{{ patient.id }}" class="back-link">← Back to {{ patient.name }}</a>
 	<h1 class="page-title">❓ Ask CareLoop AI</h1>
-	<p class="page-subtitle">Ask a question about {{ patient.name }}'s care</p>
+	<p class="page-subtitle">Ask a question about {{ patient.name }}'s care — GLM 5.1 uses full conversation history for context</p>
 </div>
 
 <div class="form-card">
-	<form action="/patient/{{ patient.id }}/ask" method="POST" id="qa-form">
+	<form id="qa-form">
 		<div class="form-group">
 			<label for="question" class="form-label">Your Question</label>
 			<div class="input-with-actions">
@@ -30,9 +30,25 @@
 	</form>
 </div>
 
+<details class="glm-reasoning-section" id="glm-reasoning-section" style="margin-top:1.5rem">
+    <summary class="glm-reasoning-header">
+        <span class="glm-reasoning-icon">🧠</span>
+        <span class="glm-reasoning-title">🤖 GLM 5.1 Reasoning</span>
+        <span class="glm-thinking-dots" id="glm-thinking-dots" style="display:none">
+            <span class="dot"></span>
+            <span class="dot"></span>
+            <span class="dot"></span>
+        </span>
+    </summary>
+    <div class="glm-reasoning-content">
+        <div class="glm-reasoning-text" id="glm-reasoning-text"></div>
+        <div class="analysis-output" id="analysis-output"></div>
+    </div>
+</details>
+
 {% if qa_history %}
 <section class="section" style="margin-top: 2rem;">
-	<h2 class="section-title">Previous Questions</h2>
+	<h2 class="section-title">Conversation History ({{ qa_history|length }} exchanges)</h2>
 	<div class="qa-list">
 		{% for qa in qa_history %}
 		<div class="qa-exchange" id="qa-{{ qa.id }}">
@@ -47,8 +63,14 @@
 		</div>
 		{% endfor %}
 	</div>
+	<p style="margin-top:0.75rem;font-size:0.8rem;color:var(--text-muted)">💡 GLM 5.1 uses your last {{ qa_history|length }} Q&A exchanges as conversation context for better answers.</p>
 </section>
 {% endif %}
+
+<div class="loading-overlay" id="loading-overlay">
+	<div class="loading-spinner"></div>
+	<div class="loading-text">GLM 5.1 is thinking...</div>
+</div>
 
 <style>
 .input-with-actions {
@@ -93,20 +115,24 @@
 	padding: 0.25rem 0.5rem;
 }
 </style>
+{% endblock %}
 
+{% block scripts %}
 <script>
 (function() {
-	const btnMic = document.getElementById('btn-mic');
+	const form = document.getElementById('qa-form');
 	const textarea = document.getElementById('question');
+	const btnMic = document.getElementById('btn-mic');
 	const voiceStatus = document.getElementById('voice-status');
-	
+	const patientId = "{{ patient.id }}";
+
 	if (btnMic && ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
 		const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 		const recognition = new SpeechRecognition();
 		recognition.continuous = false;
 		recognition.interimResults = false;
 		recognition.lang = 'en-US';
-		
+
 		btnMic.addEventListener('click', function() {
 			if (btnMic.classList.contains('listening')) {
 				recognition.stop();
@@ -116,38 +142,45 @@
 			voiceStatus.textContent = '🎤 Listening...';
 			recognition.start();
 		});
-		
+
 		recognition.onresult = function(event) {
-			const transcript = event.results[0][0].transcript;
-			textarea.value = transcript;
+			textarea.value = event.results[0][0].transcript;
 			voiceStatus.textContent = '';
 		};
-		
 		recognition.onerror = function(event) {
-			console.error('Speech recognition error:', event.error);
 			voiceStatus.textContent = 'Error: ' + event.error;
 			btnMic.classList.remove('listening');
 		};
-		
 		recognition.onend = function() {
 			btnMic.classList.remove('listening');
-			if (voiceStatus.textContent.includes('Listening')) {
-				voiceStatus.textContent = '';
-			}
+			if (voiceStatus.textContent.includes('Listening')) voiceStatus.textContent = '';
 		};
 	} else {
 		btnMic.title = 'Voice input not supported';
 		btnMic.style.opacity = '0.5';
 		btnMic.style.cursor = 'not-allowed';
 	}
-	
+
+	form.addEventListener('submit', function(e) {
+		e.preventDefault();
+		const question = textarea.value.trim();
+		if (!question) return;
+
+		if (window.streamGLM) {
+			const encodedQ = encodeURIComponent(question);
+			streamGLM(`/api/stream/qa/${patientId}?question=${encodedQ}`, '#analysis-output');
+		} else {
+			form.action = `/patient/${patientId}/ask`;
+			form.method = 'POST';
+			form.submit();
+		}
+	});
+
 	document.querySelectorAll('.btn-speak').forEach(function(btn) {
 		btn.addEventListener('click', function() {
 			window.speechSynthesis.cancel();
-			const text = this.getAttribute('data-text');
-			const utterance = new SpeechSynthesisUtterance(text);
+			const utterance = new SpeechSynthesisUtterance(this.getAttribute('data-text'));
 			utterance.rate = 0.9;
-			utterance.pitch = 1;
 			window.speechSynthesis.speak(utterance);
 		});
 	});

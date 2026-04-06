@@ -117,18 +117,34 @@
 	</div>
 </section>
 
+<details class="glm-reasoning-section" id="glm-reasoning-section" open>
+    <summary class="glm-reasoning-header">
+        <span class="glm-reasoning-icon">🧠</span>
+        <span class="glm-reasoning-title">🤖 GLM 5.1 Reasoning</span>
+        <span class="glm-thinking-dots" id="glm-thinking-dots" style="display:none">
+            <span class="dot"></span>
+            <span class="dot"></span>
+            <span class="dot"></span>
+        </span>
+    </summary>
+    <div class="glm-reasoning-content">
+        <div class="glm-reasoning-text" id="glm-reasoning-text"></div>
+        <div class="analysis-output" id="analysis-output"></div>
+    </div>
+</details>
+
 <div class="action-bar" style="margin-top: 2rem;">
-	<form action="/analysis/{{ analysis.id }}/followups" method="POST" class="glm-form" style="display:inline">
+	<form action="/analysis/{{ analysis.id }}/followups" method="POST" class="glm-stream-form" data-stream-url="/api/stream/analysis/{{ analysis.id }}/followups" data-output="#analysis-output" style="display:inline">
 		<button type="submit" class="btn btn-accent">
 			💡 Generate Follow-up Suggestions
 		</button>
 	</form>
-	<form action="/patient/{{ patient.id }}/trends" method="POST" class="glm-form" style="display:inline">
+	<form action="/patient/{{ patient.id }}/trends" method="POST" class="glm-stream-form" data-stream-url="/api/stream/trends/{{ patient.id }}" data-output="#analysis-output" style="display:inline">
 		<button type="submit" class="btn btn-outline">
 			📈 Detect Trends
 		</button>
 	</form>
-	<form action="/patient/{{ patient.id }}/careplan" method="POST" class="glm-form" style="display:inline">
+	<form action="/patient/{{ patient.id }}/careplan" method="POST" class="glm-stream-form" data-stream-url="/api/stream/careplan/{{ patient.id }}" data-output="#analysis-output" style="display:inline">
 		<button type="submit" class="btn btn-primary">
 			📋 Generate Care Plan
 		</button>
@@ -155,10 +171,5 @@ function toggleTransparency() {
 		btn.textContent = '▼ Hide prompt and raw GLM 5.1 response';
 	}
 }
-document.querySelectorAll('.glm-form').forEach(function(form) {
-	form.addEventListener('submit', function() {
-		document.getElementById('loading-overlay').classList.add('active');
-	});
-});
 </script>
 {% endblock %}

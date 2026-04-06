@@ -1223,3 +1223,354 @@ async def run_followup_suggestions(analysis_id: str) -> dict:
         )
 
     return {"analysis_id": analysis_id, "suggestions": parsed}
+
+
+# ─── Streaming Workflow Functions ────────────────────────────
+
+
+async def stream_care_analysis(patient_id: str) -> AsyncGenerator[StreamChunk, None]:
+    with get_db() as db:
+        patient = db.execute(
+            "SELECT * FROM patients WHERE id = ?", (patient_id,)
+        ).fetchone()
+        if not patient:
+            yield StreamChunk(StreamEventType.ERROR, "Patient not found")
+            return
+        encounters = db.execute(
+            "SELECT * FROM encounters WHERE patient_id = ? ORDER BY created_at ASC",
+            (patient_id,),
+        ).fetchall()
+        if not encounters:
+            yield StreamChunk(StreamEventType.ERROR, "No encounters to analyze")
+            return
+        encounter_text = "\n".join(
+            f"[{e['created_at']}] {e['author_role'].upper()}: {e['content']}"
+            for e in encounters
+        )
+        user_content = ANALYSIS_TEMPLATE.format(
+            name=patient["name"],
+            condition=patient["condition"],
+            notes=patient["notes"] or "N/A",
+            encounters=encounter_text,
+        )
+
+    accumulated = ""
+    async for chunk in stream_glm(
+        [{"role": "user", "content": user_content}],
+        ANALYSIS_SYSTEM_PROMPT,
+        tools=True,
+        patient_id=patient_id,
+    ):
+        if chunk.event == StreamEventType.CONTENT:
+            accumulated += chunk.content
+        yield chunk
+
+    parsed = extract_json(accumulated) or get_mock_analysis(patient["name"])
+    aid = str(uuid.uuid4())
+    now = datetime.now(timezone.utc).isoformat()
+    with get_db() as db:
+        db.execute(
+            """INSERT INTO glm_analyses
+               (id, patient_id, shared_summary, patient_summary, risk_flags_json, tasks_json,
+                raw_response, prompt_sent, model, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                aid,
+                patient_id,
+                parsed.get("shared_summary", ""),
+                parsed.get("patient_summary", ""),
+                json.dumps(parsed.get("risk_flags", [])),
+                json.dumps(parsed.get("tasks", [])),
+                accumulated,
+                ANALYSIS_SYSTEM_PROMPT + "\n\n" + user_content,
+                _model(),
+                now,
+            ),
+        )
+        for td in parsed.get("tasks", []):
+            db.execute(
+                """INSERT INTO tasks (id, patient_id, analysis_id, title, description, owner, due_window, status, created_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    str(uuid.uuid4()),
+                    patient_id,
+                    aid,
+                    td.get("title", ""),
+                    td.get("description", ""),
+                    td.get("owner", "provider"),
+                    td.get("due_window", "next 7 days"),
+                    "pending",
+                    now,
+                ),
+            )
+        for flag in parsed.get("risk_flags", []):
+            if flag.get("severity") == "high":
+                db.execute(
+                    """INSERT INTO tasks (id, patient_id, analysis_id, title, description, owner, due_window, status, created_at)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    (
+                        str(uuid.uuid4()),
+                        patient_id,
+                        aid,
+                        f"URGENT: {flag.get('flag', '')}",
+                        flag.get("detail", ""),
+                        "provider",
+                        "immediate",
+                        "pending",
+                        now,
+                    ),
+                )
+
+    yield StreamChunk(
+        StreamEventType.DONE,
+        json.dumps({"analysis_id": aid, "redirect": f"/patient/{patient_id}"}),
+    )
+
+
+async def stream_careplan_generation(
+    patient_id: str,
+) -> AsyncGenerator[StreamChunk, None]:
+    with get_db() as db:
+        patient = db.execute(
+            "SELECT * FROM patients WHERE id = ?", (patient_id,)
+        ).fetchone()
+        if not patient:
+            yield StreamChunk(StreamEventType.ERROR, "Patient not found")
+            return
+        encounters = db.execute(
+            "SELECT * FROM encounters WHERE patient_id = ? ORDER BY created_at ASC",
+            (patient_id,),
+        ).fetchall()
+        enc_text = "\n".join(
+            f"[{e['created_at']}] {e['author_role']}: {e['content'][:500]}"
+            for e in encounters
+        )
+        user_content = (
+            f"Patient: {patient['name']}\nCondition: {patient['condition']}\n\n"
+            f"--- Encounters ---\n{enc_text}\n\nGenerate care plan."
+        )
+
+    accumulated = ""
+    async for chunk in stream_glm(
+        [{"role": "user", "content": user_content}],
+        CAREPLAN_PROMPT,
+        tools=True,
+        patient_id=patient_id,
+    ):
+        if chunk.event == StreamEventType.CONTENT:
+            accumulated += chunk.content
+        yield chunk
+
+    parsed = extract_json(accumulated) or get_mock_careplan(
+        patient["name"], patient["condition"]
+    )
+    pid = str(uuid.uuid4())
+    with get_db() as db:
+        db.execute(
+            """INSERT INTO care_plans (id, patient_id, plan_json, raw_response, model, created_at)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (
+                pid,
+                patient_id,
+                json.dumps(parsed),
+                accumulated,
+                _model(),
+                datetime.now(timezone.utc).isoformat(),
+            ),
+        )
+
+    yield StreamChunk(
+        StreamEventType.DONE,
+        json.dumps(
+            {"plan_id": pid, "redirect": f"/patient/{patient_id}/careplan/{pid}"}
+        ),
+    )
+
+
+async def stream_trend_detection(patient_id: str) -> AsyncGenerator[StreamChunk, None]:
+    with get_db() as db:
+        patient = db.execute(
+            "SELECT * FROM patients WHERE id = ?", (patient_id,)
+        ).fetchone()
+        if not patient:
+            yield StreamChunk(StreamEventType.ERROR, "Patient not found")
+            return
+        analyses = db.execute(
+            "SELECT * FROM glm_analyses WHERE patient_id = ? ORDER BY created_at ASC",
+            (patient_id,),
+        ).fetchall()
+        if len(analyses) < 1:
+            yield StreamChunk(StreamEventType.ERROR, "Need at least one analysis")
+            return
+        analysis_text = "\n".join(
+            f"[{a['created_at']}] {a['shared_summary']}" for a in analyses
+        )
+        user_content = (
+            f"Patient: {patient['name']}\n\n--- Previous Analyses ---\n"
+            f"{analysis_text}\n\nAnalyze trends."
+        )
+
+    accumulated = ""
+    async for chunk in stream_glm(
+        [{"role": "user", "content": user_content}], TREND_SYSTEM_PROMPT
+    ):
+        if chunk.event == StreamEventType.CONTENT:
+            accumulated += chunk.content
+        yield chunk
+
+    parsed = extract_json(accumulated) or get_mock_trend()
+    with get_db() as db:
+        if analyses:
+            db.execute(
+                "UPDATE glm_analyses SET trend_summary = ? WHERE id = ?",
+                (parsed.get("trend_summary", ""), analyses[-1]["id"]),
+            )
+
+    yield StreamChunk(
+        StreamEventType.DONE, json.dumps({"redirect": f"/patient/{patient_id}"})
+    )
+
+
+async def stream_patient_qa(
+    patient_id: str, question: str
+) -> AsyncGenerator[StreamChunk, None]:
+    with get_db() as db:
+        patient = db.execute(
+            "SELECT * FROM patients WHERE id = ?", (patient_id,)
+        ).fetchone()
+        if not patient:
+            yield StreamChunk(StreamEventType.ERROR, "Patient not found")
+            return
+        latest = db.execute(
+            "SELECT * FROM glm_analyses WHERE patient_id = ? ORDER BY created_at DESC LIMIT 1",
+            (patient_id,),
+        ).fetchone()
+        prior_qa = db.execute(
+            "SELECT question, answer FROM qa_exchanges WHERE patient_id = ? ORDER BY created_at ASC LIMIT 5",
+            (patient_id,),
+        ).fetchall()
+
+    context = f"Patient: {patient['name']}\nCondition: {patient['condition']}"
+    if latest:
+        context += f"\nLatest Analysis: {latest['shared_summary']}"
+
+    messages = []
+    for qa in prior_qa:
+        messages.append({"role": "user", "content": qa["question"]})
+        messages.append({"role": "assistant", "content": qa["answer"]})
+    messages.append(
+        {
+            "role": "user",
+            "content": f"{context}\n\nQuestion: {question}\n\nAnswer this question.",
+        }
+    )
+
+    accumulated = ""
+    async for chunk in stream_glm(messages, QA_SYSTEM_PROMPT):
+        if chunk.event == StreamEventType.CONTENT:
+            accumulated += chunk.content
+        yield chunk
+
+    answer = accumulated if accumulated else get_mock_qa_answer(question)
+    qid = str(uuid.uuid4())
+    with get_db() as db:
+        db.execute(
+            """INSERT INTO qa_exchanges (id, patient_id, question, answer, model, created_at)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (
+                qid,
+                patient_id,
+                question,
+                answer,
+                _model(),
+                datetime.now(timezone.utc).isoformat(),
+            ),
+        )
+
+    yield StreamChunk(
+        StreamEventType.DONE,
+        json.dumps({"qa_id": qid, "redirect": f"/patient/{patient_id}/ask"}),
+    )
+
+
+async def stream_encounter_summary(
+    encounter_id: str,
+) -> AsyncGenerator[StreamChunk, None]:
+    with get_db() as db:
+        encounter = db.execute(
+            "SELECT * FROM encounters WHERE id = ?", (encounter_id,)
+        ).fetchone()
+        if not encounter:
+            yield StreamChunk(StreamEventType.ERROR, "Encounter not found")
+            return
+        patient = db.execute(
+            "SELECT * FROM patients WHERE id = ?", (encounter["patient_id"],)
+        ).fetchone()
+
+    user_content = (
+        f"Patient: {patient['name']}\n\n--- Clinical Note ---\n"
+        f"{encounter['content']}\n\nExtract structured data."
+    )
+
+    accumulated = ""
+    async for chunk in stream_glm(
+        [{"role": "user", "content": user_content}], ENCOUNTER_SUMMARY_PROMPT_v2
+    ):
+        if chunk.event == StreamEventType.CONTENT:
+            accumulated += chunk.content
+        yield chunk
+
+    parsed = extract_json(accumulated) or get_mock_encounter_summary_v2(
+        encounter["content"]
+    )
+    with get_db() as db:
+        db.execute(
+            "UPDATE encounters SET structured_summary = ? WHERE id = ?",
+            (json.dumps(parsed), encounter_id),
+        )
+
+    yield StreamChunk(
+        StreamEventType.DONE,
+        json.dumps({"redirect": f"/patient/{encounter['patient_id']}"}),
+    )
+
+
+async def stream_followup_suggestions(
+    analysis_id: str,
+) -> AsyncGenerator[StreamChunk, None]:
+    with get_db() as db:
+        analysis = db.execute(
+            "SELECT * FROM glm_analyses WHERE id = ?", (analysis_id,)
+        ).fetchone()
+        if not analysis:
+            yield StreamChunk(StreamEventType.ERROR, "Analysis not found")
+            return
+        patient = db.execute(
+            "SELECT * FROM patients WHERE id = ?", (analysis["patient_id"],)
+        ).fetchone()
+
+    user_content = (
+        f"Patient: {patient['name']}\nAnalysis: {analysis['shared_summary']}\n\n"
+        f"Suggest 3 follow-up questions."
+    )
+
+    accumulated = ""
+    async for chunk in stream_glm(
+        [{"role": "user", "content": user_content}], FOLLOWUP_PROMPT_V2
+    ):
+        if chunk.event == StreamEventType.CONTENT:
+            accumulated += chunk.content
+        yield chunk
+
+    parsed = extract_json(accumulated)
+    if not parsed or not isinstance(parsed, list):
+        parsed = get_mock_followups_v2(patient["name"])
+    with get_db() as db:
+        db.execute(
+            "UPDATE glm_analyses SET followup_suggestions = ? WHERE id = ?",
+            (json.dumps(parsed), analysis_id),
+        )
+
+    yield StreamChunk(
+        StreamEventType.DONE, json.dumps({"redirect": f"/analysis/{analysis_id}"})
+    )

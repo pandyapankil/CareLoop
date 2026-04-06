@@ -20,7 +20,7 @@
 	<a href="/patient/{{ patient.id }}/checkin" class="btn btn-secondary">
 		💬 Patient Check-in
 	</a>
-	<form action="/patient/{{ patient.id }}/analyze" method="POST" class="glm-form" style="display:inline">
+	<form action="/patient/{{ patient.id }}/analyze" method="POST" class="glm-stream-form" data-stream-url="/api/stream/analyze/{{ patient.id }}" data-output="#analysis-output" style="display:inline">
 		<button type="submit" class="btn btn-accent">
 			🤖 Run AI Analysis
 		</button>
@@ -28,22 +28,22 @@
 	<a href="/patient/{{ patient.id }}/ask" class="btn btn-outline">
 		❓ Ask CareLoop AI
 	</a>
-	<form action="/patient/{{ patient.id }}/careplan" method="POST" class="glm-form" style="display:inline">
+	<form action="/patient/{{ patient.id }}/careplan" method="POST" class="glm-stream-form" data-stream-url="/api/stream/careplan/{{ patient.id }}" data-output="#analysis-output" style="display:inline">
 		<button type="submit" class="btn btn-primary">
 			📋 Generate Care Plan
 		</button>
 	</form>
-	<form action="/patient/{{ patient.id }}/trends" method="POST" class="glm-form" style="display:inline">
+	<form action="/patient/{{ patient.id }}/trends" method="POST" class="glm-stream-form" data-stream-url="/api/stream/trends/{{ patient.id }}" data-output="#analysis-output" style="display:inline">
 		<button type="submit" class="btn btn-outline">
 			📈 Detect Trends
 		</button>
 	</form>
 </div>
 
-<details class="glm-reasoning-section" id="glm-reasoning-section">
+<details class="glm-reasoning-section" id="glm-reasoning-section" open>
     <summary class="glm-reasoning-header">
         <span class="glm-reasoning-icon">🧠</span>
-        <span class="glm-reasoning-title">🤖 AI is taking action...</span>
+        <span class="glm-reasoning-title">🤖 GLM 5.1 Reasoning</span>
         <span class="glm-thinking-dots" id="glm-thinking-dots" style="display:none">
             <span class="dot"></span>
             <span class="dot"></span>
@@ -52,7 +52,7 @@
     </summary>
     <div class="glm-reasoning-content">
         <div class="glm-reasoning-text" id="glm-reasoning-text"></div>
-        <div class="glm-analysis-stream" id="analysis-output"></div>
+        <div class="glm-analysis-stream analysis-output" id="analysis-output"></div>
     </div>
 </details>
 
@@ -128,19 +128,15 @@
 				{% if item.data.author_role == 'provider' %}
 				<div class="timeline-actions">
 					{% if item.data.structured_summary %}
-					<details class="structured-summary-details">
-						<summary>🤖 AI Structured Extract</summary>
-						<pre>{{ item.data.structured_summary }}</pre>
-					</details>
-					{% else %}
-					<form action="/encounter/{{ item.data.id }}/summarize" method="POST" class="glm-form" style="display:inline">
-						<button type="submit" class="btn btn-sm btn-ai">🤖 Summarize Encounter</button>
-					</form>
-					{% endif %}
-				</div>
-				{% endif %}
-
-				{% elif item.type == 'analysis' %}
+                    <details class="structured-summary-details">
+                        <summary>🤖 AI Structured Extract</summary>
+                        <pre>{{ item.data.structured_summary }}</pre>
+                    </details>
+                    {% else %}
+                    <form action="/encounter/{{ item.data.id }}/summarize" method="POST" class="glm-stream-form" data-stream-url="/api/stream/encounter/{{ item.data.id }}/summarize" data-output="#analysis-output" style="display:inline">
+                        <button type="submit" class="btn btn-sm btn-ai">🤖 Summarize Encounter</button>
+                    </form>
+                    {% endif %}
 				<div class="timeline-header">
 					<span class="badge badge-ai">🤖 AI Analysis</span>
 					<span class="timeline-date">{{ item.data.created_at[:16] }}</span>

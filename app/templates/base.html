@@ -46,85 +46,32 @@
     </footer>
 
     <script>
-    // Think status animation
-    const thinkIndicator = document.createElement('div');
-    thinkIndicator.id = 'thinking-indicator';
-    thinkIndicator.innerHTML = '<span class="think-dot"></span><span class="think-dot"></span><span class="think-dot"></span>';
-    thinkIndicator.className = 'thinking';
-    thinkIndicator.style.display = 'none';
-    
     const glmThinkingBadge = document.getElementById('glm-thinking-badge');
     window.isThinking = false;
-    
+    window.tasksCreatedCount = 0;
+
     function showThinkingBadge() {
-        if (glmThinkingBadge) {
-            glmThinkingBadge.style.display = 'flex';
-        }
+        if (glmThinkingBadge) glmThinkingBadge.style.display = 'flex';
     }
-    
     function hideThinkingBadge() {
-        if (glmThinkingBadge) {
-            glmThinkingBadge.style.display = 'none';
-        }
+        if (glmThinkingBadge) glmThinkingBadge.style.display = 'none';
     }
-    
-    // SSE for streaming responses
-    async function streamAnalysis(patientId, outputEl) {
-        window.isThinking = true;
-        window.tasksCreatedCount = 0;
-        showThinkingBadge();
-        outputEl.innerHTML = '';
-        outputEl.appendChild(thinkIndicator.cloneNode(true));
-        outputEl.querySelector('#thinking-indicator').style.display = 'flex';
-        
-        const evtSource = new EventSource(`/api/stream/analyze/${patientId}`);
-        let thinking = '';
-        let content = '';
-        
-        evtSource.onmessage = (e) => {
-            const data = JSON.parse(e.data);
-            if (data.event === 'thinking') {
-                thinking += data.content;
-                outputEl.querySelector('#thinking-indicator').title = 'GLM is thinking...';
-                const thinkingEl = document.getElementById('glm-reasoning-text');
-                if (thinkingEl) {
-                    thinkingEl.textContent = thinking;
-                }
-            } else if (data.event === 'content') {
-                content += data.content;
-                outputEl.innerHTML = content;
-            } else if (data.event === 'tool_call') {
-                const toolName = data.tool_name;
-                const toolArgs = data.tool_args;
-                if (toolName === 'create_task') {
-                    const taskTitle = toolArgs.title || 'New task';
-                    window.tasksCreatedCount = (window.tasksCreatedCount || 0) + 1;
-                    showToast(`🤖 Creating task: ${taskTitle}...`, 'thinking');
-                }
-            } else if (data.event === 'tool_result') {
-                if (data.tool_name === 'create_task') {
-                    showToast(`✅ Task created!`, 'success');
-                }
-            } else if (data.event === 'done') {
-                evtSource.close();
-                window.isThinking = false;
-                hideThinkingBadge();
-                outputEl.querySelector('#thinking-indicator').style.display = 'none';
-                const taskCount = window.tasksCreatedCount || 0;
-                if (taskCount > 0) {
-                    showToast(`🎉 Analysis complete! ${taskCount} task${taskCount > 1 ? 's' : ''} created.`, 'success');
-                }
-            }
-        };
-        
-        evtSource.onerror = () => {
-            evtSource.close();
-            window.isThinking = false;
-            hideThinkingBadge();
-        };
+
+    function renderMarkdown(text) {
+        if (!text) return '';
+        let html = text
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        html = html.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code class="lang-$1">$2</code></pre>');
+        html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+        html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+        html = html.replace(/#{1,3}\s+(.+)/g, '<strong style="font-size:1.1em;color:var(--accent)">$1</strong>');
+        html = html.replace(/^[-*]\s+(.+)/gm, '<li>$1</li>');
+        html = html.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
+        html = html.replace(/\n{2,}/g, '</p><p>');
+        html = html.replace(/\n/g, '<br>');
+        return '<p>' + html + '</p>';
     }
-    
-    // Toast notification system
+
     function showToast(message, type = 'thinking') {
         let container = document.getElementById('toast-container');
         if (!container) {
@@ -133,41 +80,111 @@
             container.className = 'toast-container';
             document.body.appendChild(container);
         }
-        
         const toast = document.createElement('div');
         toast.className = `toast toast-${type}`;
         toast.innerHTML = message;
-        
         container.appendChild(toast);
-        
-        setTimeout(() => {
-            toast.classList.add('toast-show');
-        }, 10);
-        
+        setTimeout(() => toast.classList.add('toast-show'), 10);
         setTimeout(() => {
             toast.classList.remove('toast-show');
             setTimeout(() => toast.remove(), 300);
-        }, 3000);
+        }, 4000);
     }
-    
-    // Show thinking on analyze button click
+
+    function streamGLM(url, outputSelector) {
+        window.isThinking = true;
+        window.tasksCreatedCount = 0;
+        showThinkingBadge();
+
+        const outputEl = document.querySelector(outputSelector) || document.getElementById('analysis-output');
+        const thinkingEl = document.getElementById('glm-reasoning-text');
+        const reasoningSection = document.getElementById('glm-reasoning-section');
+        const thinkingDots = document.getElementById('glm-thinking-dots');
+
+        if (reasoningSection) reasoningSection.open = true;
+        if (thinkingDots) thinkingDots.style.display = 'flex';
+        if (thinkingEl) thinkingEl.textContent = '';
+        if (outputEl) outputEl.innerHTML = '<div class="thinking" style="display:flex"><span class="think-dot"></span><span class="think-dot"></span><span class="think-dot"></span></div>';
+
+        let thinking = '';
+        let content = '';
+        const evtSource = new EventSource(url);
+
+        evtSource.onmessage = (e) => {
+            const data = JSON.parse(e.data);
+            if (data.event === 'thinking') {
+                thinking += data.content;
+                if (thinkingEl) thinkingEl.textContent = thinking;
+            } else if (data.event === 'content') {
+                content += data.content;
+                if (outputEl) outputEl.innerHTML = renderMarkdown(content);
+            } else if (data.event === 'tool_call') {
+                const name = data.tool_name;
+                const args = data.tool_args || {};
+                if (name === 'create_task') {
+                    window.tasksCreatedCount++;
+                    showToast(`🤖 Creating task: ${args.title || 'New task'}...`, 'thinking');
+                } else if (name === 'send_message') {
+                    showToast(`📨 Sending message to care team...`, 'thinking');
+                } else if (name === 'schedule_reminder') {
+                    showToast(`⏰ Scheduling reminder...`, 'thinking');
+                } else if (name === 'get_patient_history') {
+                    showToast(`📋 Fetching patient history...`, 'thinking');
+                } else {
+                    showToast(`🔧 Executing: ${name}...`, 'thinking');
+                }
+            } else if (data.event === 'tool_result') {
+                showToast(`✅ ${data.tool_name} complete!`, 'success');
+            } else if (data.event === 'done') {
+                evtSource.close();
+                window.isThinking = false;
+                hideThinkingBadge();
+                if (thinkingDots) thinkingDots.style.display = 'none';
+                const tc = window.tasksCreatedCount || 0;
+                if (tc > 0) {
+                    showToast(`🎉 Done! ${tc} task${tc > 1 ? 's' : ''} created autonomously.`, 'success');
+                } else {
+                    showToast('✨ GLM 5.1 analysis complete!', 'success');
+                }
+                try {
+                    const result = JSON.parse(data.content);
+                    if (result.redirect) {
+                        setTimeout(() => { window.location.href = result.redirect; }, 800);
+                        return;
+                    }
+                } catch {}
+                setTimeout(() => window.location.reload(), 1500);
+            } else if (data.event === 'error') {
+                evtSource.close();
+                window.isThinking = false;
+                hideThinkingBadge();
+                if (thinkingDots) thinkingDots.style.display = 'none';
+                if (outputEl) outputEl.innerHTML = `<div class="analysis-card" style="border-left:3px solid var(--risk-high)"><p>GLM 5.1 is in demo mode — connect an API key for live AI. Falling back to mock data...</p></div>`;
+                showToast('⚠️ Using demo mode (no API key)', 'error');
+                setTimeout(() => window.location.reload(), 2000);
+            }
+        };
+
+        evtSource.onerror = () => {
+            evtSource.close();
+            window.isThinking = false;
+            hideThinkingBadge();
+            if (thinkingDots) thinkingDots.style.display = 'none';
+            setTimeout(() => window.location.reload(), 1500);
+        };
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
-        document.querySelectorAll('form[action*="/analyze"]').forEach(form => {
+        document.querySelectorAll('.glm-stream-form').forEach(form => {
             form.addEventListener('submit', function(e) {
-                const patientId = form.action.match(/patient\/([^/]+)/)?.[1];
-                const outputEl = document.getElementById('analysis-output');
-                if (patientId && outputEl && window.EventSource) {
-                    e.preventDefault();
-                    streamAnalysis(patientId, outputEl);
-                    fetch(form.action, {method: 'POST', redirect: 'follow'})
-                        .then(resp => {
-                            if (resp.redirected) {
-                                window.location.href = resp.url;
-                            } else if (resp.ok) {
-                                window.location.reload();
-                            }
-                        })
-                        .catch(() => window.location.reload());
+                e.preventDefault();
+                const streamUrl = form.dataset.streamUrl;
+                const outputSel = form.dataset.output || '#analysis-output';
+                if (streamUrl) {
+                    streamGLM(streamUrl, outputSel);
+                } else {
+                    const patientId = form.action.match(/patient\/([^/]+)/)?.[1];
+                    if (patientId) streamGLM(`/api/stream/analyze/${patientId}`, outputSel);
                 }
             });
         });
@@ -252,6 +269,43 @@
     .toast-error {
         background: linear-gradient(135deg, #ef4444, #dc2626);
         color: white;
+    }
+    .toast-info {
+        background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+        color: white;
+    }
+    .analysis-output {
+        margin-top: 1rem;
+        padding: 1rem;
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: var(--radius-sm, 10px);
+        min-height: 60px;
+        line-height: 1.7;
+    }
+    .analysis-output p { margin-bottom: 0.5rem; }
+    .analysis-output pre {
+        background: rgba(0, 0, 0, 0.4);
+        padding: 0.75rem;
+        border-radius: 6px;
+        overflow-x: auto;
+        font-size: 0.85rem;
+    }
+    .analysis-output code {
+        background: rgba(139, 92, 246, 0.2);
+        padding: 0.1rem 0.3rem;
+        border-radius: 3px;
+        font-size: 0.85em;
+    }
+    .analysis-output pre code {
+        background: none;
+        padding: 0;
+    }
+    .analysis-output li {
+        margin-left: 1rem;
+        margin-bottom: 0.25rem;
+    }
+    .analysis-output strong {
+        color: var(--accent);
     }
     </style>
 

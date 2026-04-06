@@ -145,6 +145,77 @@ async def stream_analysis(patient_id: str):
     return StreamingResponse(generate(), media_type="text/event-stream")
 
 
+# ─── GLM 5.1 Streaming Care Plan ──────────────────────────
+@app.get("/api/stream/careplan/{patient_id}")
+async def stream_careplan(patient_id: str):
+    from app.services.glm_service import stream_careplan_generation, StreamEventType
+
+    async def generate():
+        async for chunk in stream_careplan_generation(patient_id):
+            chunk_data = {"event": chunk.event, "content": chunk.content}
+            if chunk.tool_name:
+                chunk_data["tool_name"] = chunk.tool_name
+                chunk_data["tool_args"] = chunk.tool_args
+            yield f"data: {json.dumps(chunk_data)}\n\n"
+
+    return StreamingResponse(generate(), media_type="text/event-stream")
+
+
+# ─── GLM 5.1 Streaming Trends ────────────────────────────
+@app.get("/api/stream/trends/{patient_id}")
+async def stream_trends(patient_id: str):
+    from app.services.glm_service import stream_trend_detection, StreamEventType
+
+    async def generate():
+        async for chunk in stream_trend_detection(patient_id):
+            chunk_data = {"event": chunk.event, "content": chunk.content}
+            yield f"data: {json.dumps(chunk_data)}\n\n"
+
+    return StreamingResponse(generate(), media_type="text/event-stream")
+
+
+# ─── GLM 5.1 Streaming Q&A ───────────────────────────────
+@app.get("/api/stream/qa/{patient_id}")
+async def stream_qa(patient_id: str, question: str = ""):
+    from app.services.glm_service import stream_patient_qa, StreamEventType
+
+    if not question:
+        return JSONResponse({"error": "Question required"}, status_code=400)
+
+    async def generate():
+        async for chunk in stream_patient_qa(patient_id, question):
+            chunk_data = {"event": chunk.event, "content": chunk.content}
+            yield f"data: {json.dumps(chunk_data)}\n\n"
+
+    return StreamingResponse(generate(), media_type="text/event-stream")
+
+
+# ─── GLM 5.1 Streaming Encounter Summary ──────────────────
+@app.get("/api/stream/encounter/{encounter_id}/summarize")
+async def stream_encounter_summary(encounter_id: str):
+    from app.services.glm_service import stream_encounter_summary as _stream
+
+    async def generate():
+        async for chunk in _stream(encounter_id):
+            chunk_data = {"event": chunk.event, "content": chunk.content}
+            yield f"data: {json.dumps(chunk_data)}\n\n"
+
+    return StreamingResponse(generate(), media_type="text/event-stream")
+
+
+# ─── GLM 5.1 Streaming Follow-up Suggestions ─────────────
+@app.get("/api/stream/analysis/{analysis_id}/followups")
+async def stream_followups(analysis_id: str):
+    from app.services.glm_service import stream_followup_suggestions
+
+    async def generate():
+        async for chunk in stream_followup_suggestions(analysis_id):
+            chunk_data = {"event": chunk.event, "content": chunk.content}
+            yield f"data: {json.dumps(chunk_data)}\n\n"
+
+    return StreamingResponse(generate(), media_type="text/event-stream")
+
+
 # ─── Home Page ───────────────────────────────────────────────
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
