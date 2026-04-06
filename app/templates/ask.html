@@ -100,7 +100,7 @@
 	const textarea = document.getElementById('question');
 	const voiceStatus = document.getElementById('voice-status');
 	
-	if (btnMic && 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+	if (btnMic && ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
 		const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 		const recognition = new SpeechRecognition();
 		recognition.continuous = false;
