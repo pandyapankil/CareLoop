@@ -1033,32 +1033,3 @@ async def run_followup_suggestions(analysis_id: str) -> dict:
         )
 
     return {"analysis_id": analysis_id, "suggestions": parsed}
-
-    with get_db() as db:
-        doc = db.execute(
-            "SELECT * FROM documents WHERE id = ?", (document_id,)
-        ).fetchone()
-        if not doc:
-            return {"error": "Document not found"}
-
-        file_path = doc["file_path"]
-        if not os.path.exists(file_path):
-            return {"error": "File not found"}
-
-        with open(file_path, "rb") as f:
-            b64 = base64.b64encode(f.read()).decode()
-
-        prompt = "Analyze this medical document. Extract: patient name, dates, diagnoses, medications, key findings, follow-up recommendations."
-
-        content, success = await analyze_image(b64, prompt)
-
-        if success:
-            db.execute(
-                "UPDATE documents SET notes = ? WHERE id = ?",
-                (content, document_id),
-            )
-
-        return {
-            "document_id": document_id,
-            "analysis": content if success else "Analysis failed",
-        }

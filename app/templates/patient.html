@@ -206,9 +206,14 @@
 
 {% block scripts %}
 <script>
-const glmThinkingDots = document.getElementById('glm-thinking-dots');
-const glmReasoningText = document.getElementById('glm-reasoning-text');
-const glmReasoningSection = document.getElementById('glm-reasoning-section');
+document.addEventListener('DOMContentLoaded', function() {
+    var overlay = document.getElementById('loading-overlay');
+    if (overlay) overlay.classList.remove('active');
+});
+
+var glmThinkingDots = document.getElementById('glm-thinking-dots');
+var glmReasoningText = document.getElementById('glm-reasoning-text');
+var glmReasoningSection = document.getElementById('glm-reasoning-section');
 
 document.querySelectorAll('.glm-form').forEach(function(form) {
 	form.addEventListener('submit', function() {
