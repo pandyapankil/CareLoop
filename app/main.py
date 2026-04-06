@@ -128,9 +128,15 @@ async def stream_analysis(patient_id: str):
         from app.services.glm_service import StreamEventType
 
         async for chunk in stream_glm(
-            [{"role": "user", "content": user_content}], ANALYSIS_SYSTEM_PROMPT
+            [{"role": "user", "content": user_content}],
+            ANALYSIS_SYSTEM_PROMPT,
+            tools=True,
         ):
-            yield f"data: {json.dumps({'event': chunk.event, 'content': chunk.content})}\n\n"
+            chunk_data = {"event": chunk.event, "content": chunk.content}
+            if chunk.tool_name:
+                chunk_data["tool_name"] = chunk.tool_name
+                chunk_data["tool_args"] = chunk.tool_args
+            yield f"data: {json.dumps(chunk_data)}\n\n"
 
     return StreamingResponse(generate(), media_type="text/event-stream")
 

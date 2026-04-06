@@ -363,6 +363,88 @@ body {
 	border: 1px solid var(--border-color);
 }
 
+/* ─── GLM 5.1 Reasoning Section ───────────────────── */
+.glm-reasoning-section {
+	margin-bottom: 1.5rem;
+	background: var(--bg-card);
+	border-radius: var(--radius);
+	border: 1px solid var(--border-color);
+	overflow: hidden;
+}
+
+.glm-reasoning-header {
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+	padding: 1rem 1.25rem;
+	cursor: pointer;
+	list-style: none;
+	background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.1));
+	border-bottom: 1px solid var(--border-color);
+}
+
+.glm-reasoning-header::-webkit-details-marker {
+	display: none;
+}
+
+.glm-reasoning-icon {
+	font-size: 1.25rem;
+}
+
+.glm-reasoning-title {
+	flex: 1;
+	font-weight: 600;
+	color: var(--text-primary);
+}
+
+.glm-thinking-dots {
+	display: flex;
+	gap: 4px;
+}
+
+.glm-thinking-dots .dot {
+	width: 6px;
+	height: 6px;
+	background: var(--accent);
+	border-radius: 50%;
+	animation: think-pulse 1.4s infinite ease-in-out;
+}
+
+.glm-thinking-dots .dot:nth-child(2) { animation-delay: 0.2s; }
+.glm-thinking-dots .dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes think-pulse {
+	0%, 80%, 100% { transform: scale(0.6); opacity: 0.5; }
+	40% { transform: scale(1); opacity: 1; }
+}
+
+.glm-reasoning-content {
+	padding: 1.25rem;
+}
+
+.glm-reasoning-text {
+	min-height: 60px;
+	padding: 1rem;
+	background: rgba(0, 0, 0, 0.3);
+	border-radius: var(--radius-sm);
+	border-left: 3px solid var(--accent-secondary);
+	font-family: monospace;
+	font-size: 0.85rem;
+	line-height: 1.6;
+	color: var(--text-secondary);
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
+.glm-analysis-stream {
+	margin-top: 1rem;
+	padding: 1rem;
+	background: rgba(0, 0, 0, 0.2);
+	border-radius: var(--radius-sm);
+	color: var(--text-primary);
+	line-height: 1.7;
+}
+
 /* ─── Buttons ──────────────────────────────────────────── */
 .btn {
 	display: inline-flex;

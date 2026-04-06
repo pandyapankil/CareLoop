@@ -12,9 +12,15 @@
 	<form action="/patient/{{ patient.id }}/ask" method="POST" id="qa-form">
 		<div class="form-group">
 			<label for="question" class="form-label">Your Question</label>
-			<textarea id="question" name="question" class="form-textarea"
-				placeholder="e.g., What should I watch out for with my new medication? How is my recovery going? When should I schedule my next appointment?"
-				rows="3" required></textarea>
+			<div class="input-with-actions">
+				<textarea id="question" name="question" class="form-textarea"
+					placeholder="e.g., What should I watch out for with my new medication? How is my recovery going? When should I schedule my next appointment?"
+					rows="3" required></textarea>
+				<button type="button" class="btn-icon" id="btn-mic" title="Voice input">
+					🎤
+				</button>
+			</div>
+			<div class="voice-status" id="voice-status"></div>
 		</div>
 		<div class="form-actions">
 			<button type="submit" class="btn btn-accent" id="btn-submit-question">
@@ -36,10 +42,115 @@
 			</div>
 			<div class="qa-answer">
 				<strong>A:</strong> {{ qa.answer }}
+				<button type="button" class="btn-icon btn-speak" data-text="{{ qa.answer }}" title="Read aloud">🔊</button>
 			</div>
 		</div>
 		{% endfor %}
 	</div>
 </section>
 {% endif %}
+
+<style>
+.input-with-actions {
+	position: relative;
+	display: flex;
+	align-items: flex-start;
+	gap: 0.5rem;
+}
+.input-with-actions .form-textarea {
+	flex: 1;
+}
+.btn-icon {
+	background: var(--bg-tertiary, #f0f0f0);
+	border: 1px solid var(--border-color, #ddd);
+	border-radius: 8px;
+	padding: 0.5rem 0.75rem;
+	cursor: pointer;
+	font-size: 1.1rem;
+	transition: all 0.2s ease;
+}
+.btn-icon:hover {
+	background: var(--bg-hover, #e5e5e5);
+}
+.btn-icon.listening {
+	background: #ff4444;
+	color: white;
+	animation: pulse 1s infinite;
+}
+@keyframes pulse {
+	0%, 100% { opacity: 1; }
+	50% { opacity: 0.7; }
+}
+.voice-status {
+	font-size: 0.875rem;
+	color: var(--text-secondary, #666);
+	margin-top: 0.5rem;
+	min-height: 1.25rem;
+}
+.btn-speak {
+	margin-left: 0.5rem;
+	font-size: 0.9rem;
+	padding: 0.25rem 0.5rem;
+}
+</style>
+
+<script>
+(function() {
+	const btnMic = document.getElementById('btn-mic');
+	const textarea = document.getElementById('question');
+	const voiceStatus = document.getElementById('voice-status');
+	
+	if (btnMic && 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+		const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+		const recognition = new SpeechRecognition();
+		recognition.continuous = false;
+		recognition.interimResults = false;
+		recognition.lang = 'en-US';
+		
+		btnMic.addEventListener('click', function() {
+			if (btnMic.classList.contains('listening')) {
+				recognition.stop();
+				return;
+			}
+			btnMic.classList.add('listening');
+			voiceStatus.textContent = '🎤 Listening...';
+			recognition.start();
+		});
+		
+		recognition.onresult = function(event) {
+			const transcript = event.results[0][0].transcript;
+			textarea.value = transcript;
+			voiceStatus.textContent = '';
+		};
+		
+		recognition.onerror = function(event) {
+			console.error('Speech recognition error:', event.error);
+			voiceStatus.textContent = 'Error: ' + event.error;
+			btnMic.classList.remove('listening');
+		};
+		
+		recognition.onend = function() {
+			btnMic.classList.remove('listening');
+			if (voiceStatus.textContent.includes('Listening')) {
+				voiceStatus.textContent = '';
+			}
+		};
+	} else {
+		btnMic.title = 'Voice input not supported';
+		btnMic.style.opacity = '0.5';
+		btnMic.style.cursor = 'not-allowed';
+	}
+	
+	document.querySelectorAll('.btn-speak').forEach(function(btn) {
+		btn.addEventListener('click', function() {
+			window.speechSynthesis.cancel();
+			const text = this.getAttribute('data-text');
+			const utterance = new SpeechSynthesisUtterance(text);
+			utterance.rate = 0.9;
+			utterance.pitch = 1;
+			window.speechSynthesis.speak(utterance);
+		});
+	});
+})();
+</script>
 {% endblock %}

@@ -315,6 +315,20 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_audit_user ON audit_log(user_id);
         CREATE INDEX IF NOT EXISTS idx_audit_resource ON audit_log(resource_type, resource_id);
         CREATE INDEX IF NOT EXISTS idx_care_plans_patient ON care_plans(patient_id);
+
+        CREATE TABLE IF NOT EXISTS api_usage (
+            id TEXT PRIMARY KEY,
+            call_type TEXT NOT NULL,
+            model TEXT NOT NULL,
+            prompt_tokens INTEGER NOT NULL DEFAULT 0,
+            completion_tokens INTEGER NOT NULL DEFAULT 0,
+            cost_cents REAL NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_api_usage_call_type ON api_usage(call_type);
+        CREATE INDEX IF NOT EXISTS idx_api_usage_model ON api_usage(model);
+        CREATE INDEX IF NOT EXISTS idx_api_usage_created ON api_usage(created_at);
     """)
 
     _migrate(conn)

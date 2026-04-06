@@ -71,21 +71,50 @@ class Usage:
         self.cost_cents += other.cost_cents
 
 
-_global_usage = Usage()
+def record_usage(
+    call_type: str,
+    model: str,
+    prompt_tokens: int,
+    completion_tokens: int,
+    cost_cents: float,
+):
+    with get_db() as db:
+        db.execute(
+            """INSERT INTO api_usage (id, call_type, model, prompt_tokens, completion_tokens, cost_cents, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (
+                str(uuid.uuid4()),
+                call_type,
+                model,
+                prompt_tokens,
+                completion_tokens,
+                cost_cents,
+                datetime.now(timezone.utc).isoformat(),
+            ),
+        )
 
 
 def get_usage() -> dict:
-    return {
-        "prompt_tokens": _global_usage.prompt_tokens,
-        "completion_tokens": _global_usage.completion_tokens,
-        "total_tokens": _global_usage.total_tokens,
-        "cost_cents": round(_global_usage.cost_cents, 2),
-    }
+    with get_db() as db:
+        result = db.execute(
+            """SELECT 
+                   COALESCE(SUM(prompt_tokens), 0) as prompt_tokens,
+                   COALESCE(SUM(completion_tokens), 0) as completion_tokens,
+                   COALESCE(SUM(prompt_tokens + completion_tokens), 0) as total_tokens,
+                   COALESCE(SUM(cost_cents), 0) as cost_cents
+               FROM api_usage"""
+        ).fetchone()
+        return {
+            "prompt_tokens": result["prompt_tokens"],
+            "completion_tokens": result["completion_tokens"],
+            "total_tokens": result["total_tokens"],
+            "cost_cents": round(result["cost_cents"], 2),
+        }
 
 
 def reset_usage():
-    global _global_usage
-    _global_usage = Usage()
+    with get_db() as db:
+        db.execute("DELETE FROM api_usage")
 
 
 PRICING_PER_1K = {
@@ -385,7 +414,13 @@ async def stream_glm(
                             total_tokens=usage_obj.get("total_tokens", 0),
                         )
                         u.cost_cents = _calc_cost(_model(), u)
-                        _global_usage.add(u)
+                        record_usage(
+                            "stream",
+                            _model(),
+                            u.prompt_tokens,
+                            u.completion_tokens,
+                            u.cost_cents,
+                        )
 
     except asyncio.TimeoutError:
         yield StreamChunk(StreamEventType.ERROR, "Request timeout")
@@ -454,7 +489,13 @@ async def call_glm(
                         total_tokens=usage_obj.get("total_tokens", 0),
                     )
                     u.cost_cents = _calc_cost(_model(), u)
-                    _global_usage.add(u)
+                    record_usage(
+                        "call",
+                        _model(),
+                        u.prompt_tokens,
+                        u.completion_tokens,
+                        u.cost_cents,
+                    )
                 else:
                     prompt_chars = len(system_prompt or "") + sum(
                         len(m.get("content", "")) for m in messages
@@ -467,7 +508,13 @@ async def call_glm(
                         total_tokens=est_prompt + est_completion,
                     )
                     u.cost_cents = _calc_cost(_model(), u)
-                    _global_usage.add(u)
+                    record_usage(
+                        "call",
+                        _model(),
+                        u.prompt_tokens,
+                        u.completion_tokens,
+                        u.cost_cents,
+                    )
 
                 return content, True, thinking
 

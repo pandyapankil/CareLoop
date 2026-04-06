@@ -40,6 +40,22 @@
 	</form>
 </div>
 
+<details class="glm-reasoning-section" id="glm-reasoning-section">
+    <summary class="glm-reasoning-header">
+        <span class="glm-reasoning-icon">🧠</span>
+        <span class="glm-reasoning-title">🤖 AI is taking action...</span>
+        <span class="glm-thinking-dots" id="glm-thinking-dots" style="display:none">
+            <span class="dot"></span>
+            <span class="dot"></span>
+            <span class="dot"></span>
+        </span>
+    </summary>
+    <div class="glm-reasoning-content">
+        <div class="glm-reasoning-text" id="glm-reasoning-text"></div>
+        <div class="glm-analysis-stream" id="analysis-output"></div>
+    </div>
+</details>
+
 {% if tasks %}
 {% set active_tasks = tasks | selectattr('status', 'ne', 'completed') | selectattr('status', 'ne', 'skipped') | list %}
 {% set completed_tasks = tasks | selectattr('status', 'eq', 'completed') | list %}
@@ -190,10 +206,28 @@
 
 {% block scripts %}
 <script>
+const glmThinkingDots = document.getElementById('glm-thinking-dots');
+const glmReasoningText = document.getElementById('glm-reasoning-text');
+const glmReasoningSection = document.getElementById('glm-reasoning-section');
+
 document.querySelectorAll('.glm-form').forEach(function(form) {
 	form.addEventListener('submit', function() {
 		document.getElementById('loading-overlay').classList.add('active');
+		if (glmReasoningSection) {
+			glmReasoningSection.open = true;
+		}
+		if (glmThinkingDots) {
+			glmThinkingDots.style.display = 'flex';
+		}
 	});
 });
+
+setInterval(function() {
+	if (window.isThinking && glmThinkingDots) {
+		glmThinkingDots.style.display = 'flex';
+	} else if (glmThinkingDots) {
+		glmThinkingDots.style.display = 'none';
+	}
+}, 100);
 </script>
 {% endblock %}

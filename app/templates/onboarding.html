@@ -1,0 +1,461 @@
+<div id="onboarding-modal" class="onboarding-modal">
+    <div class="onboarding-backdrop"></div>
+    <div class="onboarding-card">
+        <button class="onboarding-close" onclick="closeOnboarding()">&times;</button>
+        
+        <div class="onboarding-header">
+            <div class="onboarding-logo">
+                <span class="logo-icon">⟳</span>
+            </div>
+            <h1 class="onboarding-title">CareLoop</h1>
+            <p class="onboarding-subtitle">AI-Powered Care Coordination</p>
+        </div>
+        
+        <div class="onboarding-features">
+            <div class="feature-item" data-tour="analysis">
+                <div class="feature-icon">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="18" height="18" rx="2"/>
+                        <circle cx="8.5" cy="8.5" r="1.5"/>
+                        <path d="M21 15l-5-5L5 21"/>
+                    </svg>
+                </div>
+                <div class="feature-content">
+                    <h3>GLM 5.1 Analysis</h3>
+                    <p>AI that thinks and acts — advanced reasoning for better care decisions</p>
+                </div>
+            </div>
+            
+            <div class="feature-item" data-tour="voice">
+                <div class="feature-icon">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                        <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                        <line x1="12" y1="19" x2="12" y2="23"/>
+                        <line x1="8" y1="23" x2="16" y2="23"/>
+                    </svg>
+                </div>
+                <div class="feature-content">
+                    <h3>Voice Q&A</h3>
+                    <p>Talk to your care team — naturalConversations, instant responses</p>
+                </div>
+            </div>
+            
+            <div class="feature-item" data-tour="insights">
+                <div class="feature-icon">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="20" x2="18" y2="10"/>
+                        <line x1="12" y1="20" x2="12" y2="4"/>
+                        <line x1="6" y1="20" x2="6" y2="14"/>
+                    </svg>
+                </div>
+                <div class="feature-content">
+                    <h3>Real-time Insights</h3>
+                    <p>See AI reasoning — transparent, explainable recommendations</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="onboarding-footer">
+            <button class="btn-tour" onclick="startTour()">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <polygon points="10 8 16 12 10 16 10 8"/>
+                </svg>
+                Take the Tour
+            </button>
+            <button class="btn-skip" onclick="closeOnboarding()">Skip for now</button>
+        </div>
+    </div>
+</div>
+
+<style>
+.onboarding-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+}
+
+.onboarding-modal.active {
+    display: flex;
+}
+
+.onboarding-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    animation: fadeIn 0.3s ease;
+}
+
+.onboarding-card {
+    position: relative;
+    background: linear-gradient(145deg, #1e1b4b, #312e81);
+    border-radius: 24px;
+    padding: 40px;
+    max-width: 480px;
+    width: 90%;
+    box-shadow: 
+        0 25px 50px -12px rgba(0, 0, 0, 0.5),
+        0 0 0 1px rgba(139, 92, 246, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    animation: slideUp 0.4s ease;
+    color: white;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.onboarding-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: white;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    font-size: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.onboarding-close:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: scale(1.1);
+}
+
+.onboarding-header {
+    text-align: center;
+    margin-bottom: 32px;
+}
+
+.onboarding-logo {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 72px;
+    height: 72px;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    border-radius: 20px;
+    margin-bottom: 16px;
+    box-shadow: 0 8px 32px rgba(99, 102, 241, 0.4);
+}
+
+.logo-icon {
+    font-size: 36px;
+    color: white;
+    animation: spin-slow 20s linear infinite;
+}
+
+@keyframes spin-slow {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.onboarding-title {
+    font-family: 'Outfit', sans-serif;
+    font-size: 28px;
+    font-weight: 700;
+    margin: 0 0 4px 0;
+    background: linear-gradient(135deg, #fff, #c4b5fd);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.onboarding-subtitle {
+    font-size: 16px;
+    color: #a5b4fc;
+    margin: 0;
+    font-weight: 500;
+}
+
+.onboarding-features {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    margin-bottom: 32px;
+}
+
+.feature-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 16px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 16px;
+    border: 1px solid rgba(139, 92, 246, 0.2);
+    transition: all 0.3s;
+}
+
+.feature-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(139, 92, 246, 0.4);
+    transform: translateX(4px);
+}
+
+.feature-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 52px;
+    height: 52px;
+    background: linear-gradient(135deg, #4338ca, #6366f1);
+    border-radius: 14px;
+    flex-shrink: 0;
+    color: white;
+}
+
+.feature-content h3 {
+    font-family: 'Outfit', sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0 0 4px 0;
+    color: white;
+}
+
+.feature-content p {
+    font-size: 13px;
+    color: #a5b4fc;
+    margin: 0;
+    line-height: 1.5;
+}
+
+.onboarding-footer {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.btn-tour {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 14px 24px;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    border: none;
+    border-radius: 12px;
+    color: white;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 4px 16px rgba(99, 102, 241, 0.4);
+}
+
+.btn-tour:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(99, 102, 241, 0.5);
+}
+
+.btn-skip {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    color: #a5b4fc;
+    padding: 12px 24px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-skip:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.tour-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 10000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+
+.tour-overlay.active {
+    display: flex;
+}
+
+.tour-step {
+    background: linear-gradient(145deg, #1e1b4b, #312e81);
+    border-radius: 20px;
+    padding: 32px;
+    max-width: 400px;
+    text-align: center;
+    color: white;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    animation: tourPop 0.3s ease;
+}
+
+@keyframes tourPop {
+    from { opacity: 0; transform: scale(0.9); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+.tour-step h2 {
+    font-family: 'Outfit', sans-serif;
+    font-size: 22px;
+    margin: 0 0 12px 0;
+}
+
+.tour-step p {
+    color: #a5b4fc;
+    margin: 0 0 20px 0;
+    line-height: 1.6;
+}
+
+.tour-nav {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+}
+
+.tour-nav button {
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.tour-next {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    border: none;
+    color: white;
+}
+
+.tour-end {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+}
+
+.tour-dots {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    justify-content: center;
+}
+
+.tour-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3);
+    transition: all 0.3s;
+}
+
+.tour-dot.active {
+    background: #8b5cf6;
+    transform: scale(1.3);
+}
+</style>
+
+<script>
+const tourSteps = [
+    {
+        title: "GLM 5.1 Analysis",
+        description: "CareLoop uses advanced AI to analyze patient data, medical history, and care patterns. The AI thinks through complex scenarios to provide actionable insights."
+    },
+    {
+        title: "Voice Q&A",
+        description: "Communicate naturally with your care team. Ask questions, get instant answers, and receive personalized care guidance through voice interactions."
+    },
+    {
+        title: "Real-time Insights",
+        description: "Watch the AI reason in real-time. Every recommendation shows its thinking, so you understand exactly how conclusions are reached."
+    },
+    {
+        title: "Ready to Go!",
+        description: "You're all set! CareLoop streamlines care coordination so you can focus on what matters most — your patients."
+    }
+];
+
+let currentTourStep = 0;
+
+function closeOnboarding() {
+    const modal = document.getElementById('onboarding-modal');
+    if (modal) {
+        modal.classList.remove('active');
+        localStorage.setItem('onboarding_seen', 'true');
+    }
+}
+
+function startTour() {
+    closeOnboarding();
+    const overlay = document.getElementById('tour-overlay');
+    if (overlay) {
+        overlay.classList.add('active');
+        showTourStep(0);
+    }
+}
+
+function showTourStep(step) {
+    currentTourStep = step;
+    const overlay = document.getElementById('tour-overlay');
+    const stepEl = document.getElementById('tour-step-content');
+    const dots = document.querySelectorAll('.tour-dot');
+    
+    if (stepEl && overlay) {
+        const data = tourSteps[step];
+        stepEl.innerHTML = `
+            <div class="tour-dots">
+                ${tourSteps.map((_, i) => `<span class="tour-dot ${i === step ? 'active' : ''}"></span>`).join('')}
+            </div>
+            <h2>${data.title}</h2>
+            <p>${data.description}</p>
+            <div class="tour-nav">
+                ${step < tourSteps.length - 1 ? 
+                    `<button class="tour-next" onclick="showTourStep(${step + 1})">Next</button>` : 
+                    `<button class="tour-end" onclick="endTour()">Get Started</button>`
+                }
+                ${step > 0 ? `<button class="tour-end" onclick="showTourStep(${step - 1})">Back</button>` : ''}
+            </div>
+        `;
+    }
+}
+
+function endTour() {
+    const overlay = document.getElementById('tour-overlay');
+    if (overlay) {
+        overlay.classList.remove('active');
+    }
+    localStorage.setItem('onboarding_seen', 'true');
+    localStorage.setItem('tour_completed', 'true');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    if (!localStorage.getItem('onboarding_seen')) {
+        const modal = document.getElementById('onboarding-modal');
+        if (modal) {
+            modal.classList.add('active');
+        }
+    }
+    
+    const tourOverlay = document.createElement('div');
+    tourOverlay.id = 'tour-overlay';
+    tourOverlay.className = 'tour-overlay';
+    tourOverlay.innerHTML = '<div id="tour-step-content" class="tour-step"></div>';
+    document.body.appendChild(tourOverlay);
+});
+</script>
