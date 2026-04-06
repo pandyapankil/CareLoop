@@ -270,12 +270,13 @@ async def execute_tool(name: str, args: dict, patient_id: str = None) -> dict:
             ).fetchone()
             if user:
                 db.execute(
-                    """INSERT INTO notifications (id, user_id, type, message, related_id, created_at)
-                       VALUES (?, ?, ?, ?, ?, ?)""",
+                    """INSERT INTO notifications (id, user_id, type, title, body, related_id, created_at)
+                       VALUES (?, ?, ?, ?, ?, ?, ?)""",
                     (
                         str(uuid.uuid4()),
                         args["notify_user_id"],
                         "reminder",
+                        "Reminder",
                         args["message"],
                         patient_id,
                         now,
@@ -287,7 +288,7 @@ async def execute_tool(name: str, args: dict, patient_id: str = None) -> dict:
         with get_db() as db:
             sender_id = db.execute("SELECT id FROM users LIMIT 1").fetchone()["id"]
             db.execute(
-                """INSERT INTO messages (id, sender_id, receiver_id, subject, body, urgent, patient_id, created_at)
+                """INSERT INTO messages (id, sender_id, receiver_id, subject, body, urgency, patient_id, created_at)
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     str(uuid.uuid4()),
@@ -295,7 +296,7 @@ async def execute_tool(name: str, args: dict, patient_id: str = None) -> dict:
                     args["recipient_id"],
                     args["subject"],
                     args["body"],
-                    args.get("urgent", False),
+                    "urgent" if args.get("urgent") else "normal",
                     patient_id,
                     now,
                 ),
@@ -571,12 +572,20 @@ async def analyze_image(base64_image: str, prompt: str) -> tuple[str, bool]:
         return str(e), False
 
 
-ANALYSIS_SYSTEM_PROMPT = """You are CareLoop AI, a healthcare coordination assistant powered by GLM 5.1.
+ANALYSIS_SYSTEM_PROMPT = """You are CareLoop AI, an advanced healthcare coordination assistant powered by GLM 5.1.
+
 You have access to tools that can create tasks, schedule reminders, and send messages.
 Use these tools proactively to act on your analysis results.
 
 Your role: analyze patient encounters and produce structured care coordination output.
-Think step-by-step about the patient's situation."""
+Think step-by-step about the patient's condition, medications, vitals, and trajectory.
+
+Guidelines:
+- Consider drug interactions and contraindications
+- Identify early warning signs and subtle clinical changes
+- Prioritize tasks by clinical urgency
+- Write patient-friendly summaries avoiding medical jargon
+- Flag any safety concerns immediately"""
 
 ANALYSIS_TEMPLATE = """Patient: {name}
 Condition: {condition}
@@ -585,22 +594,56 @@ Notes: {notes}
 --- Encounters ---
 {encounters}
 
-Analyze and produce JSON with: shared_summary, patient_summary, tasks, risk_flags.
-If creating tasks, use the create_task function to make them real."""
+Analyze all encounters and produce a JSON object with exactly these fields:
+{{
+  "shared_summary": "Detailed clinical summary for the care team (2-3 paragraphs)",
+  "patient_summary": "Warm, jargon-free summary for the patient (1-2 paragraphs)",
+  "tasks": [
+    {{"title": "...", "description": "...", "owner": "patient|provider|coordinator", "due_window": "next N days"}}
+  ],
+  "risk_flags": [
+    {{"flag": "...", "severity": "high|medium|low", "detail": "..."}}
+  ]
+}}
 
-TREND_SYSTEM_PROMPT = """You are CareLoop AI analyzing trends. Identify patterns in patient's care history.
-Use get_patient_history to fetch full context when needed."""
+If any tasks are urgent or important, use the create_task function to persist them."""
 
-QA_SYSTEM_PROMPT = """You are CareLoop AI, helping patients understand their care.
-Be warm, empathetic. Use plain language. If unsure, say so."""
+TREND_SYSTEM_PROMPT = """You are CareLoop AI analyzing care trends over time powered by GLM 5.1.
+Identify patterns in patient care history across multiple analyses.
+Use get_patient_history to fetch full context when needed.
+Return JSON: {{"trend_summary": "...", "patterns": [...], "direction": "improving|stable|declining", "recommendations": [...]}}"""
 
-ENCOUNTER_SUMMARY_PROMPT = """Extract structured clinical data from provider notes.
-Return JSON: chief_complaint, diagnoses, medications_mentioned, vitals, procedures, follow_up, urgency."""
+QA_SYSTEM_PROMPT = """You are CareLoop AI, helping patients understand their care powered by GLM 5.1.
+Be warm, empathetic, and reassuring. Use plain language a patient can understand.
+If unsure about medical advice, say so and recommend consulting their provider.
+Keep answers concise but thorough. Reference their specific condition when relevant."""
 
-CAREPLAN_PROMPT = """Generate multi-week care plan.
-Use get_patient_history for context.
-Return JSON: plan_title, duration_weeks, goals, weekly_plan, milestones, emergency_triggers.
-Create real tasks via function calls."""
+ENCOUNTER_SUMMARY_PROMPT = """You are CareLoop AI extracting structured clinical data powered by GLM 5.1.
+Extract from provider notes and return JSON:
+{{
+  "chief_complaint": "...",
+  "diagnoses": [...],
+  "medications_mentioned": [{{"name": "...", "action": "started|continued|changed|stopped", "dosage": "..."}}],
+  "vitals": {{"bp": "...", "hr": "...", "temp": "...", "o2": "..."}},
+  "procedures": [...],
+  "follow_up": "...",
+  "urgency": "routine|urgent|emergent"
+}}"""
+
+CAREPLAN_PROMPT = """You are CareLoop AI generating personalized care plans powered by GLM 5.1.
+Use get_patient_history for full patient context.
+Generate a comprehensive multi-week care plan and return JSON:
+{{
+  "plan_title": "...",
+  "duration_weeks": N,
+  "goals": ["...", ...],
+  "weekly_plan": [
+    {{"week": N, "focus": "...", "patient_tasks": [...], "provider_tasks": [...], "warnings": [...]}}
+  ],
+  "milestones": ["...", ...],
+  "emergency_triggers": ["...", ...]
+}}
+Create real tasks via function calls for any actionable items."""
 
 
 def get_mock_analysis(patient_name: str) -> dict:
@@ -685,15 +728,19 @@ async def run_care_analysis(patient_id: str) -> dict:
             for e in encounters
         )
 
+        user_msg_content = ANALYSIS_TEMPLATE.format(
+            name=patient["name"],
+            condition=patient["condition"],
+            notes=patient["notes"] or "N/A",
+            encounters=encounter_text,
+        )
+
         user_msg = {
             "role": "user",
-            "content": ANALYSIS_TEMPLATE.format(
-                name=patient["name"],
-                condition=patient["condition"],
-                notes=patient["notes"] or "N/A",
-                encounters=encounter_text,
-            ),
+            "content": user_msg_content,
         }
+
+        full_prompt = ANALYSIS_SYSTEM_PROMPT + "\n\n" + user_msg_content
 
         content, success, thinking = await call_glm(
             [user_msg], ANALYSIS_SYSTEM_PROMPT, tools=True
@@ -710,8 +757,8 @@ async def run_care_analysis(patient_id: str) -> dict:
         aid = str(uuid.uuid4())
         db.execute(
             """INSERT INTO glm_analyses
-               (id, patient_id, shared_summary, patient_summary, risk_flags_json, tasks_json, raw_response, model, created_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+               (id, patient_id, shared_summary, patient_summary, risk_flags_json, tasks_json, raw_response, prompt_sent, model, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 aid,
                 patient_id,
@@ -720,6 +767,7 @@ async def run_care_analysis(patient_id: str) -> dict:
                 json.dumps(parsed.get("risk_flags", [])),
                 json.dumps(parsed.get("tasks", [])),
                 content,
+                full_prompt,
                 _model(),
                 datetime.now(timezone.utc).isoformat(),
             ),
@@ -904,9 +952,6 @@ async def run_careplan_generation(patient_id: str) -> dict:
 
 
 async def analyze_document(document_id: str) -> dict:
-    from app.database import get_db
-    import base64
-
     with get_db() as db:
         doc = db.execute(
             "SELECT * FROM documents WHERE id = ?", (document_id,)
@@ -914,9 +959,11 @@ async def analyze_document(document_id: str) -> dict:
         if not doc:
             return {"error": "Document not found"}
 
-        file_path = doc["file_path"]
+        upload_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads")
+        upload_dir = os.getenv("UPLOAD_DIR", upload_dir)
+        file_path = os.path.join(upload_dir, doc["filename"])
         if not os.path.exists(file_path):
-            return {"error": "File not found"}
+            return {"error": "File not found on disk"}
 
         with open(file_path, "rb") as f:
             b64 = base64.b64encode(f.read()).decode()
@@ -926,7 +973,8 @@ async def analyze_document(document_id: str) -> dict:
 
         if success:
             db.execute(
-                "UPDATE documents SET notes = ? WHERE id = ?", (content, document_id)
+                "UPDATE documents SET description = ? WHERE id = ?",
+                (content, document_id),
             )
 
     return {
@@ -935,8 +983,7 @@ async def analyze_document(document_id: str) -> dict:
     }
 
 
-ENCOUNTER_SUMMARY_PROMPT_v2 = """Extract structured clinical data from provider notes.
-Return JSON: chief_complaint, diagnoses, medications_mentioned, vitals, procedures, follow_up, urgency."""
+ENCOUNTER_SUMMARY_PROMPT_v2 = ENCOUNTER_SUMMARY_PROMPT
 
 
 def get_mock_encounter_summary_v2(content: str) -> dict:

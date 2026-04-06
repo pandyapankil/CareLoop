@@ -10,6 +10,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
 from app.database import get_db
+from app.middleware.auth import get_request_user_id
 
 router = APIRouter(tags=["notifications"])
 templates = Jinja2Templates(
@@ -43,19 +44,19 @@ def create_notification(
 
 @router.get("/notifications", response_class=HTMLResponse)
 async def notification_list(request: Request):
-    with get_db() as db:
-        user = db.execute("SELECT id FROM users LIMIT 1").fetchone()
-        if not user:
-            return HTMLResponse("<h1>No user found</h1>", status_code=404)
+    user_id = get_request_user_id(request)
+    if not user_id:
+        return HTMLResponse("<h1>No user found</h1>", status_code=404)
 
+    with get_db() as db:
         notifications = db.execute(
             "SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC",
-            (user["id"],),
+            (user_id,),
         ).fetchall()
 
         unread_count = db.execute(
             "SELECT COUNT(*) as cnt FROM notifications WHERE user_id = ? AND read = 0",
-            (user["id"],),
+            (user_id,),
         ).fetchone()["cnt"]
 
     return templates.TemplateResponse(
@@ -76,25 +77,25 @@ async def mark_notification_read(notification_id: str):
 
 
 @router.post("/notifications/read-all")
-async def mark_all_read():
-    with get_db() as db:
-        user = db.execute("SELECT id FROM users LIMIT 1").fetchone()
-        if user:
+async def mark_all_read(request: Request):
+    user_id = get_request_user_id(request)
+    if user_id:
+        with get_db() as db:
             db.execute(
                 "UPDATE notifications SET read = 1 WHERE user_id = ? AND read = 0",
-                (user["id"],),
+                (user_id,),
             )
     return RedirectResponse("/notifications", status_code=303)
 
 
 @router.get("/notifications/count")
-async def unread_count():
+async def unread_count(request: Request):
+    user_id = get_request_user_id(request)
+    if not user_id:
+        return JSONResponse({"count": 0})
     with get_db() as db:
-        user = db.execute("SELECT id FROM users LIMIT 1").fetchone()
-        if not user:
-            return JSONResponse({"count": 0})
         count = db.execute(
             "SELECT COUNT(*) as cnt FROM notifications WHERE user_id = ? AND read = 0",
-            (user["id"],),
+            (user_id,),
         ).fetchone()["cnt"]
     return JSONResponse({"count": count})

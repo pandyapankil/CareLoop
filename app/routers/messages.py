@@ -7,6 +7,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from app.database import get_db
+from app.middleware.auth import get_request_user_id
 from app.routers.notifications import create_notification
 
 router = APIRouter(tags=["messages"])
@@ -17,13 +18,16 @@ templates = Jinja2Templates(
 
 @router.get("/messages", response_class=HTMLResponse)
 async def message_inbox(request: Request):
+    user_id = get_request_user_id(request)
     with get_db() as db:
         received = db.execute(
-            "SELECT m.*, u.name as sender_name FROM messages m JOIN users u ON m.sender_id = u.id WHERE m.receiver_id IN (SELECT id FROM users LIMIT 1) ORDER BY m.created_at DESC"
+            "SELECT m.*, u.name as sender_name FROM messages m JOIN users u ON m.sender_id = u.id WHERE m.receiver_id = ? ORDER BY m.created_at DESC",
+            (user_id,),
         ).fetchall()
 
         sent = db.execute(
-            "SELECT m.*, u.name as receiver_name FROM messages m JOIN users u ON m.receiver_id = u.id WHERE m.sender_id IN (SELECT id FROM users LIMIT 1) ORDER BY m.created_at DESC"
+            "SELECT m.*, u.name as receiver_name FROM messages m JOIN users u ON m.receiver_id = u.id WHERE m.sender_id = ? ORDER BY m.created_at DESC",
+            (user_id,),
         ).fetchall()
 
         users = db.execute("SELECT id, name, role FROM users ORDER BY name").fetchall()
@@ -59,6 +63,7 @@ async def compose_form(request: Request):
 
 @router.post("/messages/compose")
 async def send_message(
+    request: Request,
     receiver_id: str = Form(...),
     patient_id: str = Form(""),
     subject: str = Form(...),
@@ -68,11 +73,9 @@ async def send_message(
 ):
     now = datetime.now(timezone.utc).isoformat()
     message_id = str(uuid.uuid4())
+    sender_id = get_request_user_id(request) or ""
 
     with get_db() as db:
-        sender = db.execute("SELECT id FROM users LIMIT 1").fetchone()
-        sender_id = sender["id"] if sender else ""
-
         db.execute(
             "INSERT INTO messages (id, sender_id, receiver_id, patient_id, subject, body, urgency, category, read, parent_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, ?)",
             (
@@ -143,11 +146,13 @@ async def message_detail(request: Request, message_id: str):
 
 @router.post("/message/{message_id}/reply")
 async def reply_message(
+    request: Request,
     message_id: str,
     body: str = Form(...),
 ):
     now = datetime.now(timezone.utc).isoformat()
     reply_id = str(uuid.uuid4())
+    sender_id = get_request_user_id(request) or ""
 
     with get_db() as db:
         original = db.execute(
@@ -155,9 +160,6 @@ async def reply_message(
         ).fetchone()
         if not original:
             return RedirectResponse("/messages", status_code=303)
-
-        sender = db.execute("SELECT id FROM users LIMIT 1").fetchone()
-        sender_id = sender["id"] if sender else ""
 
         db.execute(
             "INSERT INTO messages (id, sender_id, receiver_id, patient_id, subject, body, urgency, category, read, parent_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)",

@@ -259,27 +259,6 @@ def init_db():
             FOREIGN KEY (user_id) REFERENCES users(id)
         );
 
-        CREATE INDEX IF NOT EXISTS idx_encounters_patient ON encounters(patient_id);
-        CREATE INDEX IF NOT EXISTS idx_analyses_patient ON glm_analyses(patient_id);
-        CREATE INDEX IF NOT EXISTS idx_tasks_patient ON tasks(patient_id);
-        CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
-        CREATE INDEX IF NOT EXISTS idx_tasks_due_date ON tasks(due_date);
-        CREATE INDEX IF NOT EXISTS idx_qa_patient ON qa_exchanges(patient_id);
-        CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token);
-        CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
-        CREATE INDEX IF NOT EXISTS idx_appointments_patient ON appointments(patient_id);
-        CREATE INDEX IF NOT EXISTS idx_appointments_scheduled ON appointments(scheduled_at);
-        CREATE INDEX IF NOT EXISTS idx_medications_patient ON medications(patient_id);
-        CREATE INDEX IF NOT EXISTS idx_med_logs_patient ON medication_logs(patient_id);
-        CREATE INDEX IF NOT EXISTS idx_med_logs_med ON medication_logs(medication_id);
-        CREATE INDEX IF NOT EXISTS idx_symptoms_patient ON symptom_entries(patient_id);
-        CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages(sender_id);
-        CREATE INDEX IF NOT EXISTS idx_messages_receiver ON messages(receiver_id);
-        CREATE INDEX IF NOT EXISTS idx_messages_patient ON messages(patient_id);
-        CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id);
-        CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications(read);
-        CREATE INDEX IF NOT EXISTS idx_care_team_patient ON care_team(patient_id);
-        CREATE INDEX IF NOT EXISTS idx_documents_patient ON documents(patient_id);
         CREATE TABLE IF NOT EXISTS care_plans (
             id TEXT PRIMARY KEY,
             patient_id TEXT NOT NULL,

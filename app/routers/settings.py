@@ -7,6 +7,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from app.database import get_db
+from app.middleware.auth import get_request_user_id, get_current_user
 
 router = APIRouter(tags=["settings"])
 
@@ -16,8 +17,8 @@ templates = Jinja2Templates(directory=BASE_DIR / "templates")
 
 @router.get("/settings", response_class=HTMLResponse)
 async def settings_page(request: Request):
+    user = get_current_user(request)
     with get_db() as db:
-        user = db.execute("SELECT * FROM users LIMIT 1").fetchone()
         if not user:
             user_settings = {
                 "notification_prefs": {
@@ -63,7 +64,7 @@ async def settings_page(request: Request):
         "settings.html",
         {
             "request": request,
-            "user": dict(user),
+            "user": user,
             "user_name": user["name"],
             "user_email": user["email"],
             "notification_prefs": notification_prefs,
@@ -74,6 +75,7 @@ async def settings_page(request: Request):
 
 @router.post("/settings/notifications")
 async def update_notifications(
+    request: Request,
     email: str = Form("off"),
     push: str = Form("off"),
     appointments: str = Form("off"),
@@ -90,35 +92,35 @@ async def update_notifications(
         "messages": messages == "on",
     }
 
-    with get_db() as db:
-        user = db.execute("SELECT * FROM users LIMIT 1").fetchone()
-        if not user:
-            return RedirectResponse("/settings", status_code=303)
+    user_id = get_request_user_id(request)
+    if not user_id:
+        return RedirectResponse("/settings", status_code=303)
 
+    with get_db() as db:
         existing = db.execute(
-            "SELECT * FROM user_settings WHERE user_id = ?", (user["id"],)
+            "SELECT * FROM user_settings WHERE user_id = ?", (user_id,)
         ).fetchone()
         if existing:
             db.execute(
                 "UPDATE user_settings SET notification_prefs_json = ? WHERE user_id = ?",
-                (json.dumps(prefs), user["id"]),
+                (json.dumps(prefs), user_id),
             )
         else:
             db.execute(
                 "INSERT INTO user_settings (id, user_id, notification_prefs_json) VALUES (?, ?, ?)",
-                (str(uuid.uuid4()), user["id"], json.dumps(prefs)),
+                (str(uuid.uuid4()), user_id, json.dumps(prefs)),
             )
 
     return RedirectResponse("/settings", status_code=303)
 
 
 @router.post("/settings/profile")
-async def update_profile(name: str = Form(...)):
-    with get_db() as db:
-        user = db.execute("SELECT * FROM users LIMIT 1").fetchone()
-        if not user:
-            return RedirectResponse("/settings", status_code=303)
+async def update_profile(request: Request, name: str = Form(...)):
+    user_id = get_request_user_id(request)
+    if not user_id:
+        return RedirectResponse("/settings", status_code=303)
 
-        db.execute("UPDATE users SET name = ? WHERE id = ?", (name, user["id"]))
+    with get_db() as db:
+        db.execute("UPDATE users SET name = ? WHERE id = ?", (name, user_id))
 
     return RedirectResponse("/settings", status_code=303)

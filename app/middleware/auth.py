@@ -273,8 +273,6 @@ def get_current_user(request: Request) -> Optional[dict]:
 
         return dict(user)
 
-    return None
-
 
 def _get_demo_user(request: Request) -> Optional[dict]:
     demo_role = request.query_params.get("demo_role", "provider")
@@ -394,3 +392,37 @@ def can_access_patient(user: dict, patient_id: str) -> bool:
             return row is not None
 
     return False
+
+
+def log_audit(
+    action: str,
+    resource_type: str = None,
+    resource_id: str = None,
+    user_id: str = None,
+    details: str = None,
+    ip_address: str = None,
+):
+    with get_db() as db:
+        db.execute(
+            """INSERT INTO audit_log (id, user_id, action, resource_type, resource_id, details, ip_address, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                str(uuid.uuid4()),
+                user_id,
+                action,
+                resource_type,
+                resource_id,
+                details,
+                ip_address,
+                datetime.now(timezone.utc).isoformat(),
+            ),
+        )
+
+
+def get_request_user_id(request: Request) -> str | None:
+    user = get_current_user(request)
+    if user:
+        return user["id"]
+    with get_db() as db:
+        row = db.execute("SELECT id FROM users LIMIT 1").fetchone()
+        return row["id"] if row else None

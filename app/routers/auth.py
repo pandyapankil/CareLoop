@@ -27,12 +27,12 @@ templates = Jinja2Templates(
 )
 
 ROLE_DASHBOARDS = {
-    "patient": "/",
-    "provider": "/",
-    "specialist": "/",
-    "nurse": "/",
-    "coordinator": "/",
-    "admin": "/",
+    "patient": "/dashboard/patient",
+    "provider": "/dashboard/provider",
+    "specialist": "/dashboard/provider",
+    "nurse": "/dashboard/provider",
+    "coordinator": "/dashboard/coordinator",
+    "admin": "/dashboard/admin",
 }
 
 DEMO_PERSONAS = [

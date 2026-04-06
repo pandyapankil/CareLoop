@@ -5,6 +5,7 @@ import json
 import uuid
 from pathlib import Path
 from datetime import datetime, timezone
+from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -34,10 +35,18 @@ from app.routers import (
     settings,
 )
 
+
+@asynccontextmanager
+async def lifespan(application: FastAPI):
+    init_db()
+    yield
+
+
 app = FastAPI(
     title=os.getenv("APP_NAME", "CareLoop"),
     description="AI-powered care coordination using GLM 5.1",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -58,11 +67,6 @@ for r in [
     settings,
 ]:
     app.include_router(r.router)
-
-
-@app.on_event("startup")
-async def startup():
-    init_db()
 
 
 # ─── Health Check ────────────────────────────────────────────
@@ -98,7 +102,6 @@ async def stream_analysis(patient_id: str):
         ANALYSIS_TEMPLATE,
         get_db,
     )
-    import json
 
     with get_db() as db:
         patient = db.execute(
