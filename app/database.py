@@ -64,7 +64,7 @@ def init_db():
             trend_summary TEXT,
             raw_response TEXT,
             prompt_sent TEXT,
-            model TEXT DEFAULT 'glm-5.1',
+            model TEXT DEFAULT 'glm-4-alltools',
             created_at TEXT NOT NULL DEFAULT (datetime('now')),
             FOREIGN KEY (patient_id) REFERENCES patients(id),
             FOREIGN KEY (encounter_id) REFERENCES encounters(id)
@@ -92,7 +92,7 @@ def init_db():
             question TEXT NOT NULL,
             answer TEXT NOT NULL,
             context_used TEXT,
-            model TEXT DEFAULT 'glm-5.1',
+            model TEXT DEFAULT 'glm-4-alltools',
             created_at TEXT NOT NULL DEFAULT (datetime('now')),
             FOREIGN KEY (patient_id) REFERENCES patients(id)
         );
@@ -265,7 +265,7 @@ def init_db():
             plan_json TEXT NOT NULL DEFAULT '{}',
             raw_response TEXT,
             prompt_sent TEXT,
-            model TEXT DEFAULT 'glm-5.1',
+            model TEXT DEFAULT 'glm-4-alltools',
             created_at TEXT NOT NULL DEFAULT (datetime('now')),
             FOREIGN KEY (patient_id) REFERENCES patients(id)
         );

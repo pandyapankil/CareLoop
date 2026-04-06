@@ -125,7 +125,7 @@ class TestUsageTracking:
     def test_record_and_get_usage(self):
         init_db()
         reset_usage()
-        record_usage("test", "glm-5.1", 100, 50, 0.15)
+        record_usage("test", "glm-4-alltools", 100, 50, 0.15)
         usage = get_usage()
         assert usage["prompt_tokens"] == 100
         assert usage["total_tokens"] == 150
@@ -133,13 +133,13 @@ class TestUsageTracking:
     def test_reset_usage(self):
         init_db()
         reset_usage()
-        record_usage("test", "glm-5.1", 100, 50, 0.15)
+        record_usage("test", "glm-4-alltools", 100, 50, 0.15)
         reset_usage()
         assert get_usage()["prompt_tokens"] == 0
 
     def test_cost_calculation(self):
         u = Usage(prompt_tokens=1000, completion_tokens=1000, total_tokens=2000)
-        assert _calc_cost("glm-5.1", u) > 0
+        assert _calc_cost("glm-4-alltools", u) > 0
 
 
 class TestCareAnalysis:
@@ -314,7 +314,7 @@ class TestFollowupSuggestions:
                         "Keep going",
                         "[]",
                         "[]",
-                        "glm-5.1",
+                        "glm-4-alltools",
                         "2024-01-01T00:00:00",
                     ),
                 )
