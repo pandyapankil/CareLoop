@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}Usage Statistics — CareLoop{% endblock %}
+
+{% block content %}
+<div class="usage-dashboard">
+    <h1>GLM 5.1 Usage Statistics</h1>
+    
+    <div class="usage-stats">
+        <div class="stat-card">
+            <div class="stat-value" id="prompt-tokens">-</div>
+            <div class="stat-label">Prompt Tokens</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" id="completion-tokens">-</div>
+            <div class="stat-label">Completion Tokens</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" id="total-tokens">-</div>
+            <div class="stat-label">Total Tokens</div>
+        </div>
+        <div class="stat-card highlight">
+            <div class="stat-value" id="cost-cents">$0.00</div>
+            <div class="stat-label">Estimated Cost</div>
+        </div>
+    </div>
+    
+    <div class="usage-note">
+        <p>Pricing based on GLM 5.1 standard rates ($0.001/1K input, $0.001/1K output)</p>
+    </div>
+</div>
+
+<script>
+async function loadUsage() {
+    try {
+        const resp = await fetch('/api/usage');
+        const data = await resp.json();
+        
+        document.getElementById('prompt-tokens').textContent = data.prompt_tokens?.toLocaleString() || 0;
+        document.getElementById('completion-tokens').textContent = data.completion_tokens?.toLocaleString() || 0;
+        document.getElementById('total-tokens').textContent = data.total_tokens?.toLocaleString() || 0;
+        document.getElementById('cost-cents').textContent = '$' + (data.cost_cents / 100).toFixed(2);
+    } catch (e) {
+        console.error('Failed to load usage:', e);
+    }
+}
+
+loadUsage();
+setInterval(loadUsage, 30000);
+</script>
+
+<style>
+.usage-dashboard { max-width: 800px; margin: 0 auto; }
+.usage-dashboard h1 { margin-bottom: 24px; }
+.usage-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+}
+.stat-card {
+    background: var(--card-bg, #1a1a2e);
+    border-radius: 12px;
+    padding: 24px;
+    text-align: center;
+}
+.stat-card.highlight { background: #3730a3; }
+.stat-value {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+.stat-label {
+    font-size: 14px;
+    opacity: 0.7;
+}
+.usage-note {
+    font-size: 12px;
+    opacity: 0.5;
+    text-align: center;
+}
+</style>
+{% endblock %}

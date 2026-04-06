@@ -12,7 +12,12 @@ load_dotenv()
 from fastapi import FastAPI, Request, Form
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import (
+    HTMLResponse,
+    JSONResponse,
+    RedirectResponse,
+    StreamingResponse,
+)
 
 from app.database import init_db, get_db
 from app.routers import (
@@ -66,6 +71,68 @@ async def health_check():
     return JSONResponse(
         {"status": "healthy", "service": "CareLoop", "version": "1.0.0"}
     )
+
+
+# ─── Usage Dashboard ───────────────────────────────────────────
+@app.get("/api/usage")
+async def get_usage_stats():
+    from app.services.glm_service import get_usage
+
+    return JSONResponse(get_usage())
+
+
+@app.get("/usage", response_class=HTMLResponse)
+async def usage_page(request: Request):
+    return templates.TemplateResponse(
+        "usage.html",
+        {"request": request, "glm_available": bool(os.getenv("GLM_API_KEY"))},
+    )
+
+
+# ─── GLM 5.1 Streaming Analysis ────────────────────────────────
+@app.get("/api/stream/analyze/{patient_id}")
+async def stream_analysis(patient_id: str):
+    from app.services.glm_service import (
+        stream_glm,
+        ANALYSIS_SYSTEM_PROMPT,
+        ANALYSIS_TEMPLATE,
+        get_db,
+    )
+    import json
+
+    with get_db() as db:
+        patient = db.execute(
+            "SELECT * FROM patients WHERE id = ?", (patient_id,)
+        ).fetchone()
+        if not patient:
+            return JSONResponse({"error": "Patient not found"}, status_code=404)
+
+        encounters = db.execute(
+            "SELECT * FROM encounters WHERE patient_id = ? ORDER BY created_at ASC",
+            (patient_id,),
+        ).fetchall()
+
+        encounter_text = "\n".join(
+            f"[{e['created_at']}] {e['author_role'].upper()}: {e['content']}"
+            for e in encounters
+        )
+
+        user_content = ANALYSIS_TEMPLATE.format(
+            name=patient["name"],
+            condition=patient["condition"],
+            notes=patient["notes"] or "N/A",
+            encounters=encounter_text,
+        )
+
+    async def generate():
+        from app.services.glm_service import StreamEventType
+
+        async for chunk in stream_glm(
+            [{"role": "user", "content": user_content}], ANALYSIS_SYSTEM_PROMPT
+        ):
+            yield f"data: {json.dumps({'event': chunk.event, 'content': chunk.content})}\n\n"
+
+    return StreamingResponse(generate(), media_type="text/event-stream")
 
 
 # ─── Home Page ───────────────────────────────────────────────

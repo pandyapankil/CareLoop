@@ -121,12 +121,20 @@ DEMO_USERS = {
 
 
 def hash_password(password: str) -> str:
-    salted = f"{PASSWORD_SALT}:{password}:{SECRET_KEY}"
-    return hashlib.sha256(salted.encode("utf-8")).hexdigest()
+    import bcrypt
+
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt(rounds=12)).decode(
+        "utf-8"
+    )
 
 
 def verify_password(password: str, password_hash: str) -> bool:
-    return hash_password(password) == password_hash
+    import bcrypt
+
+    try:
+        return bcrypt.checkpw(password.encode("utf-8"), password_hash.encode("utf-8"))
+    except Exception:
+        return False
 
 
 def generate_token() -> str:

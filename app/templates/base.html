@@ -39,6 +39,78 @@
         </div>
     </footer>
 
+    <script>
+    // Think status animation
+    const thinkIndicator = document.createElement('div');
+    thinkIndicator.id = 'thinking-indicator';
+    thinkIndicator.innerHTML = '<span class="think-dot"></span><span class="think-dot"></span><span class="think-dot"></span>';
+    thinkIndicator.className = 'thinking';
+    thinkIndicator.style.display = 'none';
+    
+    // SSE for streaming responses
+    async function streamAnalysis(patientId, outputEl) {
+        outputEl.innerHTML = '';
+        outputEl.appendChild(thinkIndicator.cloneNode(true));
+        outputEl.querySelector('#thinking-indicator').style.display = 'flex';
+        
+        const evtSource = new EventSource(`/api/stream/analyze/${patientId}`);
+        let thinking = '';
+        let content = '';
+        
+        evtSource.onmessage = (e) => {
+            const data = JSON.parse(e.data);
+            if (data.event === 'thinking') {
+                thinking += data.content;
+                outputEl.querySelector('#thinking-indicator').title = 'GLM is thinking...';
+            } else if (data.event === 'content') {
+                content += data.content;
+                outputEl.innerHTML = content;
+            } else if (data.event === 'done') {
+                evtSource.close();
+                outputEl.querySelector('#thinking-indicator').style.display = 'none';
+            }
+        };
+        
+        evtSource.onerror = () => evtSource.close();
+    }
+    
+    // Show thinking on analyze button click
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('form[action*="analyze"]').forEach(form => {
+            form.addEventListener('submit', (e) => {
+                const patientId = form.action.match(/patient\/([^/]+)/)?.[1];
+                if (patientId && document.getElementById('analysis-output')) {
+                    e.preventDefault();
+                    streamAnalysis(patientId, document.getElementById('analysis-output'));
+                    form.submit();
+                }
+            });
+        });
+    });
+    </script>
+    
+    <style>
+    .thinking {
+        display: flex;
+        gap: 4px;
+        padding: 12px;
+        align-items: center;
+    }
+    .think-dot {
+        width: 8px;
+        height: 8px;
+        background: #6366f1;
+        border-radius: 50%;
+        animation: think-pulse 1.4s infinite ease-in-out;
+    }
+    .think-dot:nth-child(2) { animation-delay: 0.2s; }
+    .think-dot:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes think-pulse {
+        0%, 80%, 100% { transform: scale(0.6); opacity: 0.5; }
+        40% { transform: scale(1); opacity: 1; }
+    }
+    </style>
+
     {% block scripts %}{% endblock %}
 </body>
 </html>
