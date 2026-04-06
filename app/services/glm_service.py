@@ -368,6 +368,8 @@ async def stream_glm(
         working_messages.append({"role": "system", "content": system_prompt})
     working_messages.extend(messages)
 
+    retry_delays = [3, 8, 15]
+
     for _agent_step in range(MAX_AGENT_ITERATIONS):
         payload = {
             "model": _model(),
@@ -382,84 +384,112 @@ async def stream_glm(
 
         accumulated_tool_calls = {}
         stream_content = ""
+        got_429 = False
 
-        try:
-            async with httpx.AsyncClient(
-                timeout=REQUEST_TIMEOUT, follow_redirects=True
-            ) as client:
-                async with client.stream(
-                    "POST", _api_url(), json=payload, headers=headers
-                ) as response:
-                    if response.status_code != 200:
-                        yield StreamChunk(
-                            StreamEventType.ERROR,
-                            f"API error: {response.status_code}",
-                        )
-                        return
+        for _retry_attempt in range(len(retry_delays) + 1):
+            got_429 = False
+            accumulated_tool_calls = {}
+            stream_content = ""
 
-                    async for line in response.aiter_lines():
-                        if not line.startswith("data: "):
+            try:
+                async with httpx.AsyncClient(
+                    timeout=REQUEST_TIMEOUT, follow_redirects=True
+                ) as client:
+                    async with client.stream(
+                        "POST", _api_url(), json=payload, headers=headers
+                    ) as response:
+                        if response.status_code == 429:
+                            delay = (
+                                retry_delays[_retry_attempt]
+                                if _retry_attempt < len(retry_delays)
+                                else retry_delays[-1]
+                            )
+                            print(
+                                f"[CareLoop] Stream rate limited, retry {_retry_attempt + 1} in {delay}s..."
+                            )
+                            yield StreamChunk(
+                                StreamEventType.THINKING,
+                                f"Rate limited, retrying in {delay}s...",
+                            )
+                            got_429 = True
+                            await asyncio.sleep(delay)
                             continue
 
-                        data = line[6:]
-                        if data.strip() == "[DONE]":
-                            break
-
-                        try:
-                            chunk_data = json.loads(data)
-                        except json.JSONDecodeError:
-                            continue
-
-                        choice = chunk_data.get("choices", [{}])[0]
-                        delta = choice.get("delta", {})
-
-                        if thinking := delta.get("reasoning_content"):
-                            yield StreamChunk(StreamEventType.THINKING, thinking)
-
-                        if content := delta.get("content"):
-                            stream_content += content
-                            yield StreamChunk(StreamEventType.CONTENT, content)
-
-                        if tc_deltas := delta.get("tool_calls"):
-                            for tc in tc_deltas:
-                                idx = tc.get("index", 0)
-                                if idx not in accumulated_tool_calls:
-                                    accumulated_tool_calls[idx] = {
-                                        "id": tc.get("id", str(uuid.uuid4())),
-                                        "name": "",
-                                        "arguments": "",
-                                    }
-                                entry = accumulated_tool_calls[idx]
-                                if tc.get("id"):
-                                    entry["id"] = tc["id"]
-                                fn = tc.get("function", {})
-                                if fn.get("name"):
-                                    entry["name"] = fn["name"]
-                                if fn.get("arguments"):
-                                    entry["arguments"] += fn["arguments"]
-
-                        usage_obj = chunk_data.get("usage")
-                        if usage_obj:
-                            u = Usage(
-                                prompt_tokens=usage_obj.get("prompt_tokens", 0),
-                                completion_tokens=usage_obj.get("completion_tokens", 0),
-                                total_tokens=usage_obj.get("total_tokens", 0),
+                        if response.status_code != 200:
+                            yield StreamChunk(
+                                StreamEventType.ERROR,
+                                f"API error: {response.status_code}",
                             )
-                            u.cost_cents = _calc_cost(_model(), u)
-                            record_usage(
-                                "stream",
-                                _model(),
-                                u.prompt_tokens,
-                                u.completion_tokens,
-                                u.cost_cents,
-                            )
+                            return
 
-        except asyncio.TimeoutError:
-            yield StreamChunk(StreamEventType.ERROR, "Request timeout")
-            return
-        except Exception as e:
-            yield StreamChunk(StreamEventType.ERROR, str(e))
-            return
+                        async for line in response.aiter_lines():
+                            if not line.startswith("data: "):
+                                continue
+
+                            data = line[6:]
+                            if data.strip() == "[DONE]":
+                                break
+
+                            try:
+                                chunk_data = json.loads(data)
+                            except json.JSONDecodeError:
+                                continue
+
+                            choice = chunk_data.get("choices", [{}])[0]
+                            delta = choice.get("delta", {})
+
+                            if thinking := delta.get("reasoning_content"):
+                                yield StreamChunk(StreamEventType.THINKING, thinking)
+
+                            if content := delta.get("content"):
+                                stream_content += content
+                                yield StreamChunk(StreamEventType.CONTENT, content)
+
+                            if tc_deltas := delta.get("tool_calls"):
+                                for tc in tc_deltas:
+                                    idx = tc.get("index", 0)
+                                    if idx not in accumulated_tool_calls:
+                                        accumulated_tool_calls[idx] = {
+                                            "id": tc.get("id", str(uuid.uuid4())),
+                                            "name": "",
+                                            "arguments": "",
+                                        }
+                                    entry = accumulated_tool_calls[idx]
+                                    if tc.get("id"):
+                                        entry["id"] = tc["id"]
+                                    fn = tc.get("function", {})
+                                    if fn.get("name"):
+                                        entry["name"] = fn["name"]
+                                    if fn.get("arguments"):
+                                        entry["arguments"] += fn["arguments"]
+
+                            usage_obj = chunk_data.get("usage")
+                            if usage_obj:
+                                u = Usage(
+                                    prompt_tokens=usage_obj.get("prompt_tokens", 0),
+                                    completion_tokens=usage_obj.get(
+                                        "completion_tokens", 0
+                                    ),
+                                    total_tokens=usage_obj.get("total_tokens", 0),
+                                )
+                                u.cost_cents = _calc_cost(_model(), u)
+                                record_usage(
+                                    "stream",
+                                    _model(),
+                                    u.prompt_tokens,
+                                    u.completion_tokens,
+                                    u.cost_cents,
+                                )
+
+            except asyncio.TimeoutError:
+                yield StreamChunk(StreamEventType.ERROR, "Request timeout")
+                return
+            except Exception as e:
+                yield StreamChunk(StreamEventType.ERROR, str(e))
+                return
+
+            if not got_429:
+                break
 
         if accumulated_tool_calls and tools and patient_id:
             assistant_msg = {
