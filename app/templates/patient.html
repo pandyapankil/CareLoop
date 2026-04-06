@@ -14,32 +14,47 @@
 </div>
 
 <div class="action-bar">
-	<a href="/patient/{{ patient.id }}/provider-update" class="btn btn-primary" id="btn-provider-update">
+	<a href="/patient/{{ patient.id }}/provider-update" class="btn btn-primary">
 		📋 Provider Update
 	</a>
-	<a href="/patient/{{ patient.id }}/checkin" class="btn btn-secondary" id="btn-patient-checkin">
+	<a href="/patient/{{ patient.id }}/checkin" class="btn btn-secondary">
 		💬 Patient Check-in
 	</a>
-	<form action="/patient/{{ patient.id }}/analyze" method="POST" style="display:inline">
-		<button type="submit" class="btn btn-accent" id="btn-run-analysis">
+	<form action="/patient/{{ patient.id }}/analyze" method="POST" class="glm-form" style="display:inline">
+		<button type="submit" class="btn btn-accent">
 			🤖 Run AI Analysis
 		</button>
 	</form>
-	<a href="/patient/{{ patient.id }}/ask" class="btn btn-outline" id="btn-ask-ai">
+	<a href="/patient/{{ patient.id }}/ask" class="btn btn-outline">
 		❓ Ask CareLoop AI
 	</a>
+	<form action="/patient/{{ patient.id }}/careplan" method="POST" class="glm-form" style="display:inline">
+		<button type="submit" class="btn btn-primary">
+			📋 Generate Care Plan
+		</button>
+	</form>
+	<form action="/patient/{{ patient.id }}/trends" method="POST" class="glm-form" style="display:inline">
+		<button type="submit" class="btn btn-outline">
+			📈 Detect Trends
+		</button>
+	</form>
 </div>
 
 {% if tasks %}
+{% set active_tasks = tasks | selectattr('status', 'ne', 'completed') | selectattr('status', 'ne', 'skipped') | list %}
+{% set completed_tasks = tasks | selectattr('status', 'eq', 'completed') | list %}
+{% if active_tasks %}
 <section class="section">
-	<h2 class="section-title">Active Tasks</h2>
+	<h2 class="section-title">Active Tasks ({{ active_tasks|length }})</h2>
 	<div class="tasks-list">
-		{% for task in tasks %}
-		{% if task.status != 'completed' %}
-		<div class="task-card" id="task-{{ task.id }}">
+		{% for task in active_tasks %}
+		<div class="task-card{% if 'URGENT' in task.title %} task-urgent{% endif %}" id="task-{{ task.id }}">
 			<div class="task-header">
 				<span class="task-title">{{ task.title }}</span>
-				<span class="badge badge-{{ task.owner }}">{{ task.owner }}</span>
+				<div class="task-badges">
+					<span class="badge badge-{{ task.owner }}">{{ task.owner }}</span>
+					<span class="badge badge-status-{{ task.status }}">{{ task.status }}</span>
+				</div>
 			</div>
 			{% if task.due_window %}
 			<div class="task-meta">Due: {{ task.due_window }}</div>
@@ -47,11 +62,34 @@
 			{% if task.description %}
 			<div class="task-desc">{{ task.description }}</div>
 			{% endif %}
+			<div class="task-actions">
+				<form action="/task/{{ task.id }}/complete" method="POST" style="display:inline">
+					<button type="submit" class="btn btn-sm btn-success">✓ Complete</button>
+				</form>
+				<form action="/task/{{ task.id }}/skip" method="POST" style="display:inline">
+					<button type="submit" class="btn btn-sm btn-ghost">Skip</button>
+				</form>
+			</div>
 		</div>
-		{% endif %}
 		{% endfor %}
 	</div>
 </section>
+{% endif %}
+{% if completed_tasks %}
+<section class="section">
+	<h2 class="section-title">Completed Tasks ({{ completed_tasks|length }})</h2>
+	<div class="tasks-list">
+		{% for task in completed_tasks %}
+		<div class="task-card task-completed">
+			<div class="task-header">
+				<span class="task-title">{{ task.title }}</span>
+				<span class="badge badge-status-completed">completed</span>
+			</div>
+		</div>
+		{% endfor %}
+	</div>
+</section>
+{% endif %}
 {% endif %}
 
 <section class="section">
@@ -71,6 +109,20 @@
 				<div class="timeline-body">
 					<p>{{ item.data.content }}</p>
 				</div>
+				{% if item.data.author_role == 'provider' %}
+				<div class="timeline-actions">
+					{% if item.data.structured_summary %}
+					<details class="structured-summary-details">
+						<summary>🤖 AI Structured Extract</summary>
+						<pre>{{ item.data.structured_summary }}</pre>
+					</details>
+					{% else %}
+					<form action="/encounter/{{ item.data.id }}/summarize" method="POST" class="glm-form" style="display:inline">
+						<button type="submit" class="btn btn-sm btn-ai">🤖 Summarize Encounter</button>
+					</form>
+					{% endif %}
+				</div>
+				{% endif %}
 
 				{% elif item.type == 'analysis' %}
 				<div class="timeline-header">
@@ -79,7 +131,7 @@
 				</div>
 				<div class="timeline-body analysis-body">
 					<div class="analysis-section">
-						<h4>Summary</h4>
+						<h4>Clinical Summary</h4>
 						<p>{{ item.data.shared_summary }}</p>
 					</div>
 					{% if item.data.patient_summary %}
@@ -92,6 +144,16 @@
 					<div class="analysis-section trend-section">
 						<h4>📈 Trend Analysis</h4>
 						<p>{{ item.data.trend_summary }}</p>
+					</div>
+					{% endif %}
+					{% if item.data.followup_suggestions %}
+					<div class="analysis-section followup-section">
+						<h4>💡 Suggested Follow-up Questions</h4>
+						<ul class="followup-list">
+							{% for q in item.data.followup_suggestions %}
+							<li><a href="/patient/{{ patient.id }}/ask">{{ q }}</a></li>
+							{% endfor %}
+						</ul>
 					</div>
 					{% endif %}
 					<a href="/analysis/{{ item.data.id }}" class="analysis-detail-link">View Full Analysis →</a>
@@ -119,4 +181,19 @@
 	</div>
 	{% endif %}
 </section>
+
+<div class="loading-overlay" id="loading-overlay">
+	<div class="loading-spinner"></div>
+	<div class="loading-text">GLM 5.1 is thinking...</div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.querySelectorAll('.glm-form').forEach(function(form) {
+	form.addEventListener('submit', function() {
+		document.getElementById('loading-overlay').classList.add('active');
+	});
+});
+</script>
 {% endblock %}

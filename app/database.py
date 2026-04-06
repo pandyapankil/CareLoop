@@ -280,9 +280,57 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications(read);
         CREATE INDEX IF NOT EXISTS idx_care_team_patient ON care_team(patient_id);
         CREATE INDEX IF NOT EXISTS idx_documents_patient ON documents(patient_id);
+        CREATE TABLE IF NOT EXISTS care_plans (
+            id TEXT PRIMARY KEY,
+            patient_id TEXT NOT NULL,
+            plan_json TEXT NOT NULL DEFAULT '{}',
+            raw_response TEXT,
+            prompt_sent TEXT,
+            model TEXT DEFAULT 'glm-5.1',
+            created_at TEXT NOT NULL DEFAULT (datetime('now')),
+            FOREIGN KEY (patient_id) REFERENCES patients(id)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_encounters_patient ON encounters(patient_id);
+        CREATE INDEX IF NOT EXISTS idx_analyses_patient ON glm_analyses(patient_id);
+        CREATE INDEX IF NOT EXISTS idx_tasks_patient ON tasks(patient_id);
+        CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
+        CREATE INDEX IF NOT EXISTS idx_tasks_due_date ON tasks(due_date);
+        CREATE INDEX IF NOT EXISTS idx_qa_patient ON qa_exchanges(patient_id);
+        CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token);
+        CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
+        CREATE INDEX IF NOT EXISTS idx_appointments_patient ON appointments(patient_id);
+        CREATE INDEX IF NOT EXISTS idx_appointments_scheduled ON appointments(scheduled_at);
+        CREATE INDEX IF NOT EXISTS idx_medications_patient ON medications(patient_id);
+        CREATE INDEX IF NOT EXISTS idx_med_logs_patient ON medication_logs(patient_id);
+        CREATE INDEX IF NOT EXISTS idx_med_logs_med ON medication_logs(medication_id);
+        CREATE INDEX IF NOT EXISTS idx_symptoms_patient ON symptom_entries(patient_id);
+        CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages(sender_id);
+        CREATE INDEX IF NOT EXISTS idx_messages_receiver ON messages(receiver_id);
+        CREATE INDEX IF NOT EXISTS idx_messages_patient ON messages(patient_id);
+        CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id);
+        CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications(read);
+        CREATE INDEX IF NOT EXISTS idx_care_team_patient ON care_team(patient_id);
+        CREATE INDEX IF NOT EXISTS idx_documents_patient ON documents(patient_id);
         CREATE INDEX IF NOT EXISTS idx_audit_user ON audit_log(user_id);
         CREATE INDEX IF NOT EXISTS idx_audit_resource ON audit_log(resource_type, resource_id);
+        CREATE INDEX IF NOT EXISTS idx_care_plans_patient ON care_plans(patient_id);
     """)
 
+    _migrate(conn)
     conn.commit()
     conn.close()
+
+
+def _migrate(conn):
+    enc_cols = {
+        row[1] for row in conn.execute("PRAGMA table_info(encounters)").fetchall()
+    }
+    if "structured_summary" not in enc_cols:
+        conn.execute("ALTER TABLE encounters ADD COLUMN structured_summary TEXT")
+
+    ana_cols = {
+        row[1] for row in conn.execute("PRAGMA table_info(glm_analyses)").fetchall()
+    }
+    if "followup_suggestions" not in ana_cols:
+        conn.execute("ALTER TABLE glm_analyses ADD COLUMN followup_suggestions TEXT")

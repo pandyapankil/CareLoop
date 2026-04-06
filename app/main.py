@@ -29,7 +29,6 @@ from app.routers import (
     settings,
 )
 
-# Initialize app
 app = FastAPI(
     title=os.getenv("APP_NAME", "CareLoop"),
     description="AI-powered care coordination using GLM 5.1",
@@ -40,29 +39,30 @@ BASE_DIR = Path(__file__).resolve().parent
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
 
-app.include_router(symptoms.router)
-app.include_router(messages.router)
-app.include_router(notifications.router)
-app.include_router(auth.router)
-app.include_router(appointments.router)
-app.include_router(medications.router)
-app.include_router(documents.router)
-app.include_router(careteam.router)
-app.include_router(dashboard.router)
-app.include_router(analytics.router)
-app.include_router(settings.router)
+for r in [
+    symptoms,
+    messages,
+    notifications,
+    auth,
+    appointments,
+    medications,
+    documents,
+    careteam,
+    dashboard,
+    analytics,
+    settings,
+]:
+    app.include_router(r.router)
 
 
 @app.on_event("startup")
 async def startup():
-    """Initialize database on startup."""
     init_db()
 
 
 # ─── Health Check ────────────────────────────────────────────
 @app.get("/health")
 async def health_check():
-    """Health check for deployment."""
     return JSONResponse(
         {"status": "healthy", "service": "CareLoop", "version": "1.0.0"}
     )
@@ -71,31 +71,22 @@ async def health_check():
 # ─── Home Page ───────────────────────────────────────────────
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
-    """Dashboard showing all patients."""
     with get_db() as db:
         patients = db.execute(
             "SELECT * FROM patients ORDER BY created_at DESC"
         ).fetchall()
-
-        # Get encounter counts per patient
         patient_list = []
         for p in patients:
-            count = db.execute(
+            enc = db.execute(
                 "SELECT COUNT(*) as cnt FROM encounters WHERE patient_id = ?",
                 (p["id"],),
             ).fetchone()["cnt"]
-
-            analysis_count = db.execute(
+            ana = db.execute(
                 "SELECT COUNT(*) as cnt FROM glm_analyses WHERE patient_id = ?",
                 (p["id"],),
             ).fetchone()["cnt"]
-
             patient_list.append(
-                {
-                    **dict(p),
-                    "encounter_count": count,
-                    "analysis_count": analysis_count,
-                }
+                {**dict(p), "encounter_count": enc, "analysis_count": ana}
             )
 
     return templates.TemplateResponse(
@@ -111,12 +102,10 @@ async def home(request: Request):
 # ─── Patient Timeline ───────────────────────────────────────
 @app.get("/patient/{patient_id}", response_class=HTMLResponse)
 async def patient_timeline(request: Request, patient_id: str):
-    """Patient detail page with timeline of encounters and analyses."""
     with get_db() as db:
         patient = db.execute(
             "SELECT * FROM patients WHERE id = ?", (patient_id,)
         ).fetchone()
-
         if not patient:
             return HTMLResponse("<h1>Patient not found</h1>", status_code=404)
 
@@ -124,34 +113,51 @@ async def patient_timeline(request: Request, patient_id: str):
             "SELECT * FROM encounters WHERE patient_id = ? ORDER BY created_at DESC",
             (patient_id,),
         ).fetchall()
-
         analyses = db.execute(
             "SELECT * FROM glm_analyses WHERE patient_id = ? ORDER BY created_at DESC",
             (patient_id,),
         ).fetchall()
-
         tasks = db.execute(
             "SELECT * FROM tasks WHERE patient_id = ? ORDER BY created_at DESC",
             (patient_id,),
         ).fetchall()
-
         qa_exchanges = db.execute(
             "SELECT * FROM qa_exchanges WHERE patient_id = ? ORDER BY created_at DESC",
             (patient_id,),
         ).fetchall()
+        care_plans = db.execute(
+            "SELECT * FROM care_plans WHERE patient_id = ? ORDER BY created_at DESC",
+            (patient_id,),
+        ).fetchall()
 
-        # Build unified timeline
         timeline = []
         for e in encounters:
-            timeline.append(
-                {"type": "encounter", "data": dict(e), "at": e["created_at"]}
-            )
+            ed = dict(e)
+            ed["structured_summary"] = None
+            if e["structured_summary"]:
+                try:
+                    ed["structured_summary"] = json.loads(e["structured_summary"])
+                except (json.JSONDecodeError, TypeError):
+                    pass
+            timeline.append({"type": "encounter", "data": ed, "at": e["created_at"]})
+
         for a in analyses:
-            timeline.append(
-                {"type": "analysis", "data": dict(a), "at": a["created_at"]}
-            )
+            ad = dict(a)
+            ad["followup_suggestions"] = None
+            if a["followup_suggestions"]:
+                try:
+                    ad["followup_suggestions"] = json.loads(a["followup_suggestions"])
+                except (json.JSONDecodeError, TypeError):
+                    pass
+            timeline.append({"type": "analysis", "data": ad, "at": a["created_at"]})
+
         for q in qa_exchanges:
             timeline.append({"type": "qa", "data": dict(q), "at": q["created_at"]})
+
+        for cp in care_plans:
+            cpd = dict(cp)
+            cpd["plan_data"] = json.loads(cp["plan_json"])
+            timeline.append({"type": "careplan", "data": cpd, "at": cp["created_at"]})
 
         timeline.sort(key=lambda x: x["at"], reverse=True)
 
@@ -170,14 +176,12 @@ async def patient_timeline(request: Request, patient_id: str):
 # ─── Provider Update ─────────────────────────────────────────
 @app.get("/patient/{patient_id}/provider-update", response_class=HTMLResponse)
 async def provider_update_form(request: Request, patient_id: str):
-    """Show provider update form."""
     with get_db() as db:
         patient = db.execute(
             "SELECT * FROM patients WHERE id = ?", (patient_id,)
         ).fetchone()
         if not patient:
             return HTMLResponse("<h1>Patient not found</h1>", status_code=404)
-
     return templates.TemplateResponse(
         "provider_update.html",
         {
@@ -192,7 +196,6 @@ async def provider_update_form(request: Request, patient_id: str):
 async def submit_provider_update(
     patient_id: str, author_name: str = Form(...), content: str = Form(...)
 ):
-    """Submit a provider clinical update."""
     with get_db() as db:
         db.execute(
             "INSERT INTO encounters (id, patient_id, author_role, author_name, type, content, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
@@ -212,14 +215,12 @@ async def submit_provider_update(
 # ─── Patient Check-in ────────────────────────────────────────
 @app.get("/patient/{patient_id}/checkin", response_class=HTMLResponse)
 async def checkin_form(request: Request, patient_id: str):
-    """Show patient check-in form."""
     with get_db() as db:
         patient = db.execute(
             "SELECT * FROM patients WHERE id = ?", (patient_id,)
         ).fetchone()
         if not patient:
             return HTMLResponse("<h1>Patient not found</h1>", status_code=404)
-
     return templates.TemplateResponse(
         "checkin.html",
         {
@@ -232,14 +233,12 @@ async def checkin_form(request: Request, patient_id: str):
 
 @app.post("/patient/{patient_id}/checkin")
 async def submit_checkin(patient_id: str, content: str = Form(...)):
-    """Submit a patient check-in."""
     with get_db() as db:
         patient = db.execute(
             "SELECT * FROM patients WHERE id = ?", (patient_id,)
         ).fetchone()
         if not patient:
             return HTMLResponse("<h1>Patient not found</h1>", status_code=404)
-
         db.execute(
             "INSERT INTO encounters (id, patient_id, author_role, author_name, type, content, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
             (
@@ -255,10 +254,9 @@ async def submit_checkin(patient_id: str, content: str = Form(...)):
     return RedirectResponse(f"/patient/{patient_id}", status_code=303)
 
 
-# ─── GLM Analysis ────────────────────────────────────────────
+# ─── GLM 5.1 Care Analysis ──────────────────────────────────
 @app.post("/patient/{patient_id}/analyze")
 async def run_analysis(patient_id: str):
-    """Trigger GLM 5.1 care analysis for a patient."""
     from app.services.glm_service import run_care_analysis
 
     result = await run_care_analysis(patient_id)
@@ -269,25 +267,26 @@ async def run_analysis(patient_id: str):
 
 @app.get("/analysis/{analysis_id}", response_class=HTMLResponse)
 async def analysis_detail(request: Request, analysis_id: str):
-    """View full analysis with AI transparency panel."""
     with get_db() as db:
         analysis = db.execute(
             "SELECT * FROM glm_analyses WHERE id = ?", (analysis_id,)
         ).fetchone()
         if not analysis:
             return HTMLResponse("<h1>Analysis not found</h1>", status_code=404)
-
         patient = db.execute(
             "SELECT * FROM patients WHERE id = ?", (analysis["patient_id"],)
         ).fetchone()
-
         tasks = db.execute(
             "SELECT * FROM tasks WHERE analysis_id = ?", (analysis_id,)
         ).fetchall()
-
-        # Parse JSON fields
         risk_flags = json.loads(analysis["risk_flags_json"] or "[]")
         tasks_from_analysis = json.loads(analysis["tasks_json"] or "[]")
+        followup_suggestions = None
+        if analysis["followup_suggestions"]:
+            try:
+                followup_suggestions = json.loads(analysis["followup_suggestions"])
+            except (json.JSONDecodeError, TypeError):
+                pass
 
     return templates.TemplateResponse(
         "analysis.html",
@@ -298,6 +297,7 @@ async def analysis_detail(request: Request, analysis_id: str):
             "risk_flags": risk_flags,
             "tasks_from_analysis": tasks_from_analysis,
             "tasks": [dict(t) for t in tasks],
+            "followup_suggestions": followup_suggestions,
             "glm_available": bool(os.getenv("GLM_API_KEY")),
         },
     )
@@ -306,14 +306,12 @@ async def analysis_detail(request: Request, analysis_id: str):
 # ─── Patient Q&A ─────────────────────────────────────────────
 @app.get("/patient/{patient_id}/ask", response_class=HTMLResponse)
 async def ask_form(request: Request, patient_id: str):
-    """Show patient Q&A form."""
     with get_db() as db:
         patient = db.execute(
             "SELECT * FROM patients WHERE id = ?", (patient_id,)
         ).fetchone()
         if not patient:
             return HTMLResponse("<h1>Patient not found</h1>", status_code=404)
-
         qa_history = db.execute(
             "SELECT * FROM qa_exchanges WHERE patient_id = ? ORDER BY created_at DESC LIMIT 10",
             (patient_id,),
@@ -332,7 +330,6 @@ async def ask_form(request: Request, patient_id: str):
 
 @app.post("/patient/{patient_id}/ask")
 async def submit_question(patient_id: str, question: str = Form(...)):
-    """Submit a patient question to GLM 5.1."""
     from app.services.glm_service import run_patient_qa
 
     result = await run_patient_qa(patient_id, question)
@@ -341,16 +338,111 @@ async def submit_question(patient_id: str, question: str = Form(...)):
     return RedirectResponse(f"/patient/{patient_id}/ask", status_code=303)
 
 
-# ─── Trend Detection ─────────────────────────────────────────
+# ─── GLM 5.1 Trend Detection ────────────────────────────────
 @app.post("/patient/{patient_id}/trends")
 async def detect_trends(patient_id: str):
-    """Run GLM 5.1 trend detection across patient analyses."""
     from app.services.glm_service import run_trend_detection
 
     result = await run_trend_detection(patient_id)
     if "error" in result:
         return HTMLResponse(f"<h1>Error: {result['error']}</h1>", status_code=400)
     return RedirectResponse(f"/patient/{patient_id}", status_code=303)
+
+
+# ─── GLM 5.1 Encounter Summarization ────────────────────────
+@app.post("/encounter/{encounter_id}/summarize")
+async def summarize_encounter(encounter_id: str):
+    from app.services.glm_service import run_encounter_summary
+
+    result = await run_encounter_summary(encounter_id)
+    if "error" in result:
+        return HTMLResponse(f"<h1>Error: {result['error']}</h1>", status_code=400)
+    with get_db() as db:
+        enc = db.execute(
+            "SELECT patient_id FROM encounters WHERE id = ?", (encounter_id,)
+        ).fetchone()
+    return RedirectResponse(f"/patient/{enc['patient_id']}", status_code=303)
+
+
+# ─── GLM 5.1 Follow-up Suggestions ──────────────────────────
+@app.post("/analysis/{analysis_id}/followups")
+async def generate_followups(analysis_id: str):
+    from app.services.glm_service import run_followup_suggestions
+
+    result = await run_followup_suggestions(analysis_id)
+    if "error" in result:
+        return HTMLResponse(f"<h1>Error: {result['error']}</h1>", status_code=400)
+    return RedirectResponse(f"/analysis/{analysis_id}", status_code=303)
+
+
+# ─── GLM 5.1 Care Plan Generation ───────────────────────────
+@app.post("/patient/{patient_id}/careplan")
+async def generate_careplan(patient_id: str):
+    from app.services.glm_service import run_careplan_generation
+
+    result = await run_careplan_generation(patient_id)
+    if "error" in result:
+        return HTMLResponse(f"<h1>Error: {result['error']}</h1>", status_code=400)
+    return RedirectResponse(
+        f"/patient/{patient_id}/careplan/{result['plan_id']}", status_code=303
+    )
+
+
+@app.get("/patient/{patient_id}/careplan/{plan_id}", response_class=HTMLResponse)
+async def view_careplan(request: Request, patient_id: str, plan_id: str):
+    with get_db() as db:
+        patient = db.execute(
+            "SELECT * FROM patients WHERE id = ?", (patient_id,)
+        ).fetchone()
+        if not patient:
+            return HTMLResponse("<h1>Patient not found</h1>", status_code=404)
+        plan = db.execute(
+            "SELECT * FROM care_plans WHERE id = ?", (plan_id,)
+        ).fetchone()
+        if not plan:
+            return HTMLResponse("<h1>Care plan not found</h1>", status_code=404)
+        plan_data = json.loads(plan["plan_json"])
+
+    return templates.TemplateResponse(
+        "careplan.html",
+        {
+            "request": request,
+            "patient": dict(patient),
+            "plan": plan_data,
+            "plan_id": plan_id,
+            "raw_response": plan["raw_response"],
+            "model": plan["model"],
+            "created_at": plan["created_at"],
+            "glm_available": bool(os.getenv("GLM_API_KEY")),
+        },
+    )
+
+
+# ─── Task Lifecycle ──────────────────────────────────────────
+@app.post("/task/{task_id}/complete")
+async def complete_task(task_id: str):
+    with get_db() as db:
+        task = db.execute("SELECT * FROM tasks WHERE id = ?", (task_id,)).fetchone()
+        if not task:
+            return HTMLResponse("<h1>Task not found</h1>", status_code=404)
+        db.execute(
+            "UPDATE tasks SET status = 'completed', completed_at = ? WHERE id = ?",
+            (datetime.now(timezone.utc).isoformat(), task_id),
+        )
+    return RedirectResponse(f"/patient/{task['patient_id']}", status_code=303)
+
+
+@app.post("/task/{task_id}/skip")
+async def skip_task(task_id: str):
+    with get_db() as db:
+        task = db.execute("SELECT * FROM tasks WHERE id = ?", (task_id,)).fetchone()
+        if not task:
+            return HTMLResponse("<h1>Task not found</h1>", status_code=404)
+        db.execute(
+            "UPDATE tasks SET status = 'skipped', completed_at = ? WHERE id = ?",
+            (datetime.now(timezone.utc).isoformat(), task_id),
+        )
+    return RedirectResponse(f"/patient/{task['patient_id']}", status_code=303)
 
 
 if __name__ == "__main__":

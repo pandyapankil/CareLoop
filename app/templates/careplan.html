@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block title %}Care Plan — {{ patient.name }} — CareLoop{% endblock %}
+
+{% block content %}
+<div class="page-header">
+	<a href="/patient/{{ patient.id }}" class="back-link">← Back to {{ patient.name }}</a>
+	<h1 class="page-title">📋 AI-Generated Care Plan</h1>
+	<p class="page-subtitle">{{ patient.name }} · {{ plan.plan_title }} · Generated {{ created_at[:16] }} · Model: {{ model }}</p>
+</div>
+
+<section class="section">
+	<h2 class="section-title">🎯 Plan Goals</h2>
+	<div class="analysis-card">
+		<ul class="careplan-goals">
+			{% for goal in plan.goals %}
+			<li>{{ goal }}</li>
+			{% endfor %}
+		</ul>
+		<div class="plan-meta">Duration: <strong>{{ plan.duration_weeks }} weeks</strong></div>
+	</div>
+</section>
+
+{% if plan.weekly_plan %}
+<section class="section">
+	<h2 class="section-title">📅 Weekly Breakdown</h2>
+	<div class="weekly-plan">
+		{% for week in plan.weekly_plan %}
+		<div class="week-card">
+			<div class="week-header">
+				<span class="week-number">Week {{ week.week }}</span>
+				<span class="week-focus">{{ week.focus }}</span>
+			</div>
+			<div class="week-body">
+				{% if week.patient_tasks %}
+				<div class="week-section">
+					<h5>Patient Tasks</h5>
+					<ul>
+						{% for t in week.patient_tasks %}<li>{{ t }}</li>{% endfor %}
+					</ul>
+				</div>
+				{% endif %}
+				{% if week.provider_tasks %}
+				<div class="week-section">
+					<h5>Provider Tasks</h5>
+					<ul>
+						{% for t in week.provider_tasks %}<li>{{ t }}</li>{% endfor %}
+					</ul>
+				</div>
+				{% endif %}
+				{% if week.check_in_topics %}
+				<div class="week-section">
+					<h5>Check-in Topics</h5>
+					<ul>
+						{% for t in week.check_in_topics %}<li>{{ t }}</li>{% endfor %}
+					</ul>
+				</div>
+				{% endif %}
+				{% if week.warnings %}
+				<div class="week-section week-warnings">
+					<h5>⚠️ Warnings</h5>
+					<ul>
+						{% for t in week.warnings %}<li>{{ t }}</li>{% endfor %}
+					</ul>
+				</div>
+				{% endif %}
+			</div>
+		</div>
+		{% endfor %}
+	</div>
+</section>
+{% endif %}
+
+{% if plan.milestones %}
+<section class="section">
+	<h2 class="section-title">🏆 Milestones</h2>
+	<div class="analysis-card">
+		<ul class="careplan-goals">
+			{% for m in plan.milestones %}<li>{{ m }}</li>{% endfor %}
+		</ul>
+	</div>
+</section>
+{% endif %}
+
+{% if plan.emergency_triggers %}
+<section class="section">
+	<h2 class="section-title">🚨 Emergency Triggers</h2>
+	<div class="risk-flags">
+		{% for trigger in plan.emergency_triggers %}
+		<div class="risk-flag high">
+			<div class="risk-flag-icon">🔴</div>
+			<div><strong>{{ trigger }}</strong></div>
+		</div>
+		{% endfor %}
+	</div>
+</section>
+{% endif %}
+
+<section class="section">
+	<h2 class="section-title">🔍 AI Transparency</h2>
+	<div class="transparency-panel">
+		<button class="transparency-toggle" onclick="toggleTransparency()" id="btn-toggle-transparency">
+			▶ Show raw GLM 5.1 response
+		</button>
+		<div class="transparency-content" id="transparency-content">
+			<pre>{{ raw_response }}</pre>
+		</div>
+	</div>
+</section>
+
+<div class="action-bar" style="margin-top: 2rem;">
+	<a href="/patient/{{ patient.id }}" class="btn btn-outline">Back to Timeline</a>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+	function toggleTransparency() {
+		const content = document.getElementById('transparency-content');
+		const btn = document.getElementById('btn-toggle-transparency');
+		if (content.classList.contains('open')) {
+			content.classList.remove('open');
+			btn.textContent = '▶ Show raw GLM 5.1 response';
+		} else {
+			content.classList.add('open');
+			btn.textContent = '▼ Hide raw GLM 5.1 response';
+		}
+	}
+</script>
+{% endblock %}

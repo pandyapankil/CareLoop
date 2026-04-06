@@ -5,8 +5,8 @@
 <div class="hero-section">
 	<div class="hero-content">
 		<h1 class="page-title">Closing the Healthcare Coordination Gap</h1>
-		<p class="page-subtitle">CareLoop uses GLM 5.1 to transform fragmented clinical notes into actionable care
-			coordination paths. Empowering teams, illuminating trends, and answering patients.</p>
+		<p class="page-subtitle">CareLoop uses <strong>GLM 5.1</strong> to transform fragmented clinical notes into actionable care
+			coordination paths — with 6 distinct AI workflows, structured data extraction, and full transparency.</p>
 
 		<div class="hero-actions">
 			<a href="#patients" class="btn btn-accent">Explore Patients</a>
@@ -19,18 +19,33 @@
 	<div class="hero-features">
 		<div class="feature-mini-card">
 			<span class="feature-icon">✨</span>
-			<h4>AI Summaries</h4>
-			<p>From complex notes to clear actions.</p>
+			<h4>Care Analysis</h4>
+			<p>Summaries, risk flags, auto-tasks.</p>
 		</div>
 		<div class="feature-mini-card">
 			<span class="feature-icon">📈</span>
-			<h4>Trend Logic</h4>
+			<h4>Trend Detection</h4>
 			<p>Spotting clinical shifts early.</p>
 		</div>
 		<div class="feature-mini-card">
 			<span class="feature-icon">💬</span>
 			<h4>Patient Q&A</h4>
-			<p>Context-aware answers, instantly.</p>
+			<p>Context-aware answers.</p>
+		</div>
+		<div class="feature-mini-card">
+			<span class="feature-icon">📋</span>
+			<h4>Encounter Summary</h4>
+			<p>Structured data from free text.</p>
+		</div>
+		<div class="feature-mini-card">
+			<span class="feature-icon">💡</span>
+			<h4>Follow-up Suggestions</h4>
+			<p>Smart questions to ask next.</p>
+		</div>
+		<div class="feature-mini-card">
+			<span class="feature-icon">🗓️</span>
+			<h4>Care Plans</h4>
+			<p>Multi-week AI-generated plans.</p>
 		</div>
 	</div>
 </div>
@@ -42,18 +57,22 @@
 	</div>
 	<div class="stat-card">
 		<div class="stat-number">{{ patients|map(attribute='encounter_count')|sum }}</div>
-		<div class="stat-label">Processed encounters</div>
+		<div class="stat-label">Encounters</div>
 	</div>
 	<div class="stat-card">
 		<div class="stat-number">{{ patients|map(attribute='analysis_count')|sum }}</div>
 		<div class="stat-label">AI Analyses</div>
+	</div>
+	<div class="stat-card">
+		<div class="stat-number">6</div>
+		<div class="stat-label">GLM Workflows</div>
 	</div>
 </div>
 
 <div class="section" id="patients">
 	<div class="section-header">
 		<h2 class="section-title">Patient Roster</h2>
-		<p class="text-muted">Select a patient to view their timeline or run a new GLM analysis.</p>
+		<p class="text-muted">Select a patient to view their timeline or run GLM 5.1 analyses.</p>
 	</div>
 
 	{% if patients %}

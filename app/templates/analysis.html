@@ -8,7 +8,6 @@
 	<p class="page-subtitle">{{ patient.name }} · {{ analysis.created_at[:16] }} · Model: {{ analysis.model }}</p>
 </div>
 
-<!-- Shared Summary -->
 <section class="section">
 	<h2 class="section-title">Clinical Summary</h2>
 	<div class="analysis-card">
@@ -16,7 +15,6 @@
 	</div>
 </section>
 
-<!-- Patient Summary -->
 <section class="section">
 	<h2 class="section-title">💙 Patient-Friendly Summary</h2>
 	<div class="analysis-card patient-card-highlight">
@@ -24,13 +22,12 @@
 	</div>
 </section>
 
-<!-- Risk Flags -->
 {% if risk_flags %}
 <section class="section">
 	<h2 class="section-title">⚠️ Risk Flags</h2>
 	<div class="risk-flags">
 		{% for flag in risk_flags %}
-		<div class="risk-flag {{ flag.severity }}" id="risk-{{ loop.index }}">
+		<div class="risk-flag {{ flag.severity }}">
 			<div class="risk-flag-icon">
 				{% if flag.severity == 'high' %}🔴{% elif flag.severity == 'medium' %}🟡{% else %}🟢{% endif %}
 			</div>
@@ -47,16 +44,18 @@
 </section>
 {% endif %}
 
-<!-- Tasks Generated -->
 {% if tasks %}
 <section class="section">
 	<h2 class="section-title">📋 Generated Tasks</h2>
 	<div class="tasks-list">
 		{% for task in tasks %}
-		<div class="task-card" id="task-{{ task.id }}">
+		<div class="task-card">
 			<div class="task-header">
 				<span class="task-title">{{ task.title }}</span>
-				<span class="badge badge-{{ task.owner }}">{{ task.owner }}</span>
+				<div class="task-badges">
+					<span class="badge badge-{{ task.owner }}">{{ task.owner }}</span>
+					<span class="badge badge-status-{{ task.status }}">{{ task.status }}</span>
+				</div>
 			</div>
 			{% if task.due_window %}
 			<div class="task-meta">Due: {{ task.due_window }}</div>
@@ -64,13 +63,36 @@
 			{% if task.description %}
 			<div class="task-desc">{{ task.description }}</div>
 			{% endif %}
+			{% if task.status == 'pending' %}
+			<div class="task-actions">
+				<form action="/task/{{ task.id }}/complete" method="POST" style="display:inline">
+					<button type="submit" class="btn btn-sm btn-success">✓ Complete</button>
+				</form>
+				<form action="/task/{{ task.id }}/skip" method="POST" style="display:inline">
+					<button type="submit" class="btn btn-sm btn-ghost">Skip</button>
+				</form>
+			</div>
+			{% endif %}
 		</div>
 		{% endfor %}
 	</div>
 </section>
 {% endif %}
 
-<!-- Trend Summary -->
+{% if followup_suggestions %}
+<section class="section">
+	<h2 class="section-title">💡 Suggested Follow-up Questions</h2>
+	<div class="analysis-card followup-card">
+		<p class="followup-intro">GLM 5.1 suggests these questions based on the analysis:</p>
+		<ul class="followup-list">
+			{% for q in followup_suggestions %}
+			<li><a href="/patient/{{ patient.id }}/ask">{{ q }}</a></li>
+			{% endfor %}
+		</ul>
+	</div>
+</section>
+{% endif %}
+
 {% if analysis.trend_summary %}
 <section class="section">
 	<h2 class="section-title">📈 Trend Analysis</h2>
@@ -80,7 +102,6 @@
 </section>
 {% endif %}
 
-<!-- AI Transparency Panel -->
 <section class="section">
 	<h2 class="section-title">🔍 AI Transparency</h2>
 	<div class="transparency-panel">
@@ -90,7 +111,6 @@
 		<div class="transparency-content" id="transparency-content">
 			<h4 style="color: var(--accent); margin-bottom: 0.5rem;">Prompt Sent to GLM 5.1</h4>
 			<pre>{{ analysis.prompt_sent }}</pre>
-
 			<h4 style="color: var(--accent); margin: 1rem 0 0.5rem;">Raw GLM 5.1 Response</h4>
 			<pre>{{ analysis.raw_response }}</pre>
 		</div>
@@ -98,27 +118,47 @@
 </section>
 
 <div class="action-bar" style="margin-top: 2rem;">
-	<form action="/patient/{{ patient.id }}/trends" method="POST" style="display:inline">
-		<button type="submit" class="btn btn-accent" id="btn-detect-trends">
-			📈 Detect Trends Across Analyses
+	<form action="/analysis/{{ analysis.id }}/followups" method="POST" class="glm-form" style="display:inline">
+		<button type="submit" class="btn btn-accent">
+			💡 Generate Follow-up Suggestions
+		</button>
+	</form>
+	<form action="/patient/{{ patient.id }}/trends" method="POST" class="glm-form" style="display:inline">
+		<button type="submit" class="btn btn-outline">
+			📈 Detect Trends
+		</button>
+	</form>
+	<form action="/patient/{{ patient.id }}/careplan" method="POST" class="glm-form" style="display:inline">
+		<button type="submit" class="btn btn-primary">
+			📋 Generate Care Plan
 		</button>
 	</form>
 	<a href="/patient/{{ patient.id }}" class="btn btn-outline">Back to Timeline</a>
+</div>
+
+<div class="loading-overlay" id="loading-overlay">
+	<div class="loading-spinner"></div>
+	<div class="loading-text">GLM 5.1 is thinking...</div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-	function toggleTransparency() {
-		const content = document.getElementById('transparency-content');
-		const btn = document.getElementById('btn-toggle-transparency');
-		if (content.classList.contains('open')) {
-			content.classList.remove('open');
-			btn.textContent = '▶ Show prompt and raw GLM 5.1 response';
-		} else {
-			content.classList.add('open');
-			btn.textContent = '▼ Hide prompt and raw GLM 5.1 response';
-		}
+function toggleTransparency() {
+	const content = document.getElementById('transparency-content');
+	const btn = document.getElementById('btn-toggle-transparency');
+	if (content.classList.contains('open')) {
+		content.classList.remove('open');
+		btn.textContent = '▶ Show prompt and raw GLM 5.1 response';
+	} else {
+		content.classList.add('open');
+		btn.textContent = '▼ Hide prompt and raw GLM 5.1 response';
 	}
+}
+document.querySelectorAll('.glm-form').forEach(function(form) {
+	form.addEventListener('submit', function() {
+		document.getElementById('loading-overlay').classList.add('active');
+	});
+});
 </script>
 {% endblock %}
