@@ -455,6 +455,19 @@ async def call_glm(
                     )
                     u.cost_cents = _calc_cost(_model(), u)
                     _global_usage.add(u)
+                else:
+                    prompt_chars = len(system_prompt or "") + sum(
+                        len(m.get("content", "")) for m in messages
+                    )
+                    est_prompt = max(1, prompt_chars // 4)
+                    est_completion = max(1, len(content) // 4)
+                    u = Usage(
+                        prompt_tokens=est_prompt,
+                        completion_tokens=est_completion,
+                        total_tokens=est_prompt + est_completion,
+                    )
+                    u.cost_cents = _calc_cost(_model(), u)
+                    _global_usage.add(u)
 
                 return content, True, thinking
 
