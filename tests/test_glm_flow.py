@@ -436,3 +436,204 @@ class TestAuthMiddleware:
                 "SELECT * FROM audit_log ORDER BY created_at DESC LIMIT 1"
             ).fetchone()
             assert row["action"] == "test_action"
+
+
+class TestAgentLoop:
+    @pytest.mark.asyncio
+    async def test_execute_tool_creates_task(self):
+        init_db()
+        with get_db() as db:
+            db.execute(
+                "INSERT INTO patients (id, name, condition, created_at) VALUES (?, ?, ?, ?)",
+                ("at1", "Agent", "Test", "2024-01-01T00:00:00"),
+            )
+        from app.services.glm_service import execute_tool
+
+        result = await execute_tool(
+            "create_task",
+            {
+                "title": "Schedule follow-up",
+                "description": "Book appointment",
+                "owner": "provider",
+                "due_window": "next 7 days",
+            },
+            patient_id="at1",
+        )
+        assert result["success"] is True
+        with get_db() as db:
+            task = db.execute(
+                "SELECT * FROM tasks WHERE patient_id = ? ORDER BY created_at DESC LIMIT 1",
+                ("at1",),
+            ).fetchone()
+            assert task is not None
+            assert task["title"] == "Schedule follow-up"
+            assert task["status"] == "pending"
+
+    @pytest.mark.asyncio
+    async def test_execute_tool_send_message(self):
+        init_db()
+        with get_db() as db:
+            db.execute(
+                "INSERT INTO users (id, email, password_hash, name, role, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+                (
+                    "au1",
+                    "test@test.com",
+                    "hash",
+                    "Test",
+                    "provider",
+                    "2024-01-01T00:00:00",
+                ),
+            )
+            db.execute(
+                "INSERT INTO users (id, email, password_hash, name, role, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+                (
+                    "au2",
+                    "test2@test.com",
+                    "hash",
+                    "Test2",
+                    "provider",
+                    "2024-01-01T00:00:00",
+                ),
+            )
+        from app.services.glm_service import execute_tool
+
+        result = await execute_tool(
+            "send_message",
+            {
+                "recipient_id": "au2",
+                "subject": "Test Subject",
+                "body": "Test body",
+                "urgent": False,
+            },
+            patient_id=None,
+        )
+        assert result["success"] is True
+
+    @pytest.mark.asyncio
+    async def test_execute_tool_unknown(self):
+        from app.services.glm_service import execute_tool
+
+        result = await execute_tool("nonexistent_tool", {}, patient_id=None)
+        assert "error" in result
+
+    @pytest.mark.asyncio
+    async def test_call_glm_agent_loop_with_mocked_tool_calls(self):
+        init_db()
+        with get_db() as db:
+            db.execute(
+                "INSERT INTO patients (id, name, condition, created_at) VALUES (?, ?, ?, ?)",
+                ("al1", "AgentLoop", "Test", "2024-01-01T00:00:00"),
+            )
+            db.execute(
+                "INSERT INTO encounters (id, patient_id, author_role, author_name, type, content, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (
+                    "ae1",
+                    "al1",
+                    "provider",
+                    "Dr.",
+                    "provider_update",
+                    "Patient stable.",
+                    "2024-01-01T00:00:00",
+                ),
+            )
+
+        from unittest.mock import AsyncMock, patch as upatch
+        from app.services.glm_service import call_glm
+
+        first_response = {
+            "choices": [
+                {
+                    "message": {
+                        "role": "assistant",
+                        "content": "",
+                        "tool_calls": [
+                            {
+                                "id": "call_001",
+                                "type": "function",
+                                "function": {
+                                    "name": "create_task",
+                                    "arguments": json.dumps(
+                                        {
+                                            "title": "Review labs",
+                                            "description": "Check results",
+                                            "owner": "provider",
+                                            "due_window": "next 3 days",
+                                        }
+                                    ),
+                                },
+                            }
+                        ],
+                    }
+                }
+            ],
+            "usage": {
+                "prompt_tokens": 100,
+                "completion_tokens": 50,
+                "total_tokens": 150,
+            },
+        }
+
+        second_response = {
+            "choices": [
+                {
+                    "message": {
+                        "role": "assistant",
+                        "content": json.dumps(
+                            {
+                                "shared_summary": "Patient stable.",
+                                "patient_summary": "You are doing well.",
+                                "tasks": [],
+                                "risk_flags": [],
+                            }
+                        ),
+                    }
+                }
+            ],
+            "usage": {
+                "prompt_tokens": 200,
+                "completion_tokens": 100,
+                "total_tokens": 300,
+            },
+        }
+
+        mock_responses = [first_response, second_response]
+        call_count = 0
+
+        async def mock_post(url, **kwargs):
+            nonlocal call_count
+            resp_data = mock_responses[min(call_count, len(mock_responses) - 1)]
+            call_count += 1
+
+            class MockResponse:
+                status_code = 200
+
+                def raise_for_status(self):
+                    pass
+
+                def json(self):
+                    return resp_data
+
+            return MockResponse()
+
+        with upatch(
+            "httpx.AsyncClient.post", new_callable=AsyncMock, side_effect=mock_post
+        ):
+            with upatch.dict(os.environ, {"GLM_API_KEY": "test-key"}, clear=False):
+                content, success, thinking = await call_glm(
+                    [{"role": "user", "content": "Analyze"}],
+                    "You are a test assistant.",
+                    tools=True,
+                    patient_id="al1",
+                )
+
+        assert success is True
+        assert "shared_summary" in content
+        assert call_count == 2
+
+        with get_db() as db:
+            task = db.execute(
+                "SELECT * FROM tasks WHERE patient_id = ? AND title = ?",
+                ("al1", "Review labs"),
+            ).fetchone()
+            assert task is not None
+            assert task["owner"] == "provider"

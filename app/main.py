@@ -134,6 +134,7 @@ async def stream_analysis(patient_id: str):
             [{"role": "user", "content": user_content}],
             ANALYSIS_SYSTEM_PROMPT,
             tools=True,
+            patient_id=patient_id,
         ):
             chunk_data = {"event": chunk.event, "content": chunk.content}
             if chunk.tool_name:

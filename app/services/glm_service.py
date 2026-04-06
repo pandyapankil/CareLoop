@@ -26,6 +26,7 @@ import uuid
 from app.database import get_db
 
 REQUEST_TIMEOUT = 120.0
+MAX_AGENT_ITERATIONS = 5
 
 
 def _api_key():
@@ -330,8 +331,9 @@ async def stream_glm(
     messages: list,
     system_prompt: str = None,
     tools: bool = False,
+    patient_id: str = None,
 ) -> AsyncGenerator[StreamChunk, None]:
-    """Stream GLM 5.1 response with thinking support."""
+    """Stream GLM 5.1 response with thinking, tool accumulation, and agent loop."""
     api_key = _api_key()
     if not api_key:
         yield StreamChunk(StreamEventType.ERROR, "GLM_API_KEY not configured")
@@ -342,99 +344,169 @@ async def stream_glm(
         "Authorization": f"Bearer {api_key}",
     }
 
-    api_messages = []
+    working_messages = []
     if system_prompt:
-        api_messages.append({"role": "system", "content": system_prompt})
-    api_messages.extend(messages)
+        working_messages.append({"role": "system", "content": system_prompt})
+    working_messages.extend(messages)
 
-    payload = {
-        "model": _model(),
-        "messages": api_messages,
-        "stream": True,
-        "temperature": 0.3,
-        "max_tokens": 4096,
-    }
+    for _agent_step in range(MAX_AGENT_ITERATIONS):
+        payload = {
+            "model": _model(),
+            "messages": working_messages,
+            "stream": True,
+            "temperature": 0.3,
+            "max_tokens": 4096,
+        }
 
-    if tools:
-        payload["tools"] = TOOLS
+        if tools:
+            payload["tools"] = TOOLS
 
-    try:
-        async with httpx.AsyncClient(
-            timeout=REQUEST_TIMEOUT, follow_redirects=True
-        ) as client:
-            async with client.stream(
-                "POST", _api_url(), json=payload, headers=headers
-            ) as response:
-                if response.status_code != 200:
-                    yield StreamChunk(
-                        StreamEventType.ERROR, f"API error: {response.status_code}"
-                    )
-                    return
+        accumulated_tool_calls = {}
+        stream_content = ""
 
-                buffer = ""
-                async for line in response.aiter_lines():
-                    if not line.startswith("data: "):
-                        continue
+        try:
+            async with httpx.AsyncClient(
+                timeout=REQUEST_TIMEOUT, follow_redirects=True
+            ) as client:
+                async with client.stream(
+                    "POST", _api_url(), json=payload, headers=headers
+                ) as response:
+                    if response.status_code != 200:
+                        yield StreamChunk(
+                            StreamEventType.ERROR,
+                            f"API error: {response.status_code}",
+                        )
+                        return
 
-                    data = line[6:]
-                    if data.strip() == "[DONE]":
-                        yield StreamChunk(StreamEventType.DONE, "")
-                        break
+                    async for line in response.aiter_lines():
+                        if not line.startswith("data: "):
+                            continue
 
-                    try:
-                        chunk_data = json.loads(data)
-                    except json.JSONDecodeError:
-                        continue
+                        data = line[6:]
+                        if data.strip() == "[DONE]":
+                            break
 
-                    delta = chunk_data.get("delta", {})
-                    choice = chunk_data.get("choices", [{}])[0]
-                    delta = choice.get("delta", delta)
+                        try:
+                            chunk_data = json.loads(data)
+                        except json.JSONDecodeError:
+                            continue
 
-                    if thinking := delta.get("reasoning_content"):
-                        yield StreamChunk(StreamEventType.THINKING, thinking)
+                        choice = chunk_data.get("choices", [{}])[0]
+                        delta = choice.get("delta", {})
 
-                    if content := delta.get("content"):
-                        yield StreamChunk(StreamEventType.CONTENT, content)
+                        if thinking := delta.get("reasoning_content"):
+                            yield StreamChunk(StreamEventType.THINKING, thinking)
 
-                    if tool_calls := delta.get("tool_calls"):
-                        for tc in tool_calls:
-                            yield StreamChunk(
-                                StreamEventType.TOOL_CALL,
-                                "",
-                                tool_name=tc.get("function", {}).get("name"),
-                                tool_args=json.loads(
-                                    tc.get("function", {}).get("arguments", "{}")
-                                ),
+                        if content := delta.get("content"):
+                            stream_content += content
+                            yield StreamChunk(StreamEventType.CONTENT, content)
+
+                        if tc_deltas := delta.get("tool_calls"):
+                            for tc in tc_deltas:
+                                idx = tc.get("index", 0)
+                                if idx not in accumulated_tool_calls:
+                                    accumulated_tool_calls[idx] = {
+                                        "id": tc.get("id", str(uuid.uuid4())),
+                                        "name": "",
+                                        "arguments": "",
+                                    }
+                                entry = accumulated_tool_calls[idx]
+                                if tc.get("id"):
+                                    entry["id"] = tc["id"]
+                                fn = tc.get("function", {})
+                                if fn.get("name"):
+                                    entry["name"] = fn["name"]
+                                if fn.get("arguments"):
+                                    entry["arguments"] += fn["arguments"]
+
+                        usage_obj = chunk_data.get("usage")
+                        if usage_obj:
+                            u = Usage(
+                                prompt_tokens=usage_obj.get("prompt_tokens", 0),
+                                completion_tokens=usage_obj.get("completion_tokens", 0),
+                                total_tokens=usage_obj.get("total_tokens", 0),
+                            )
+                            u.cost_cents = _calc_cost(_model(), u)
+                            record_usage(
+                                "stream",
+                                _model(),
+                                u.prompt_tokens,
+                                u.completion_tokens,
+                                u.cost_cents,
                             )
 
-                    usage_obj = chunk_data.get("usage")
-                    if usage_obj:
-                        u = Usage(
-                            prompt_tokens=usage_obj.get("prompt_tokens", 0),
-                            completion_tokens=usage_obj.get("completion_tokens", 0),
-                            total_tokens=usage_obj.get("total_tokens", 0),
-                        )
-                        u.cost_cents = _calc_cost(_model(), u)
-                        record_usage(
-                            "stream",
-                            _model(),
-                            u.prompt_tokens,
-                            u.completion_tokens,
-                            u.cost_cents,
-                        )
+        except asyncio.TimeoutError:
+            yield StreamChunk(StreamEventType.ERROR, "Request timeout")
+            return
+        except Exception as e:
+            yield StreamChunk(StreamEventType.ERROR, str(e))
+            return
 
-    except asyncio.TimeoutError:
-        yield StreamChunk(StreamEventType.ERROR, "Request timeout")
-    except Exception as e:
-        yield StreamChunk(StreamEventType.ERROR, str(e))
+        if accumulated_tool_calls and tools and patient_id:
+            assistant_msg = {
+                "role": "assistant",
+                "content": stream_content or "",
+            }
+            assistant_msg["tool_calls"] = [
+                {
+                    "id": e["id"],
+                    "type": "function",
+                    "function": {
+                        "name": e["name"],
+                        "arguments": e["arguments"],
+                    },
+                }
+                for e in accumulated_tool_calls.values()
+            ]
+            working_messages.append(assistant_msg)
+
+            for idx in sorted(accumulated_tool_calls.keys()):
+                entry = accumulated_tool_calls[idx]
+                func_name = entry["name"]
+                try:
+                    func_args = json.loads(entry["arguments"])
+                except (json.JSONDecodeError, TypeError):
+                    func_args = {}
+
+                yield StreamChunk(
+                    StreamEventType.TOOL_CALL,
+                    f"Executing {func_name}...",
+                    tool_name=func_name,
+                    tool_args=func_args,
+                )
+
+                result = await execute_tool(func_name, func_args, patient_id)
+
+                yield StreamChunk(
+                    StreamEventType.TOOL_RESULT,
+                    json.dumps(result),
+                    tool_name=func_name,
+                    tool_args=func_args,
+                )
+
+                working_messages.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": entry["id"],
+                        "content": json.dumps(result),
+                    }
+                )
+
+            continue
+
+        yield StreamChunk(StreamEventType.DONE, "")
+        return
+
+    yield StreamChunk(StreamEventType.DONE, "")
 
 
 async def call_glm(
     messages: list,
     system_prompt: str = None,
     tools: bool = False,
+    patient_id: str = None,
 ) -> tuple[str, bool, Optional[str]]:
-    """Non-streaming GLM call. Returns (response, success, thinking)."""
+    """Non-streaming GLM call with agent loop for autonomous tool execution."""
     api_key = _api_key()
     if not api_key:
         return "", False, None
@@ -444,92 +516,156 @@ async def call_glm(
         "Authorization": f"Bearer {api_key}",
     }
 
-    api_messages = []
+    working_messages = []
     if system_prompt:
-        api_messages.append({"role": "system", "content": system_prompt})
-    api_messages.extend(messages)
+        working_messages.append({"role": "system", "content": system_prompt})
+    working_messages.extend(messages)
 
-    payload = {
-        "model": _model(),
-        "messages": api_messages,
-        "temperature": 0.3,
-        "max_tokens": 4096,
-    }
-
-    if tools:
-        payload["tools"] = TOOLS
-
+    all_thinking = []
+    final_content = ""
     max_retries = 3
     retry_delays = [5, 15, 30]
 
-    for attempt in range(max_retries):
-        try:
-            async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
-                response = await client.post(_api_url(), json=payload, headers=headers)
+    for _agent_step in range(MAX_AGENT_ITERATIONS):
+        payload = {
+            "model": _model(),
+            "messages": working_messages,
+            "temperature": 0.3,
+            "max_tokens": 4096,
+        }
 
-                if response.status_code == 429:
-                    delay = retry_delays[attempt] if attempt < len(retry_delays) else 30
-                    print(
-                        f"[CareLoop] Rate limited, retry {attempt + 1}/{max_retries} in {delay}s..."
+        if tools:
+            payload["tools"] = TOOLS
+
+        for attempt in range(max_retries):
+            try:
+                async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
+                    response = await client.post(
+                        _api_url(), json=payload, headers=headers
                     )
-                    await asyncio.sleep(delay)
+
+                    if response.status_code == 429:
+                        delay = (
+                            retry_delays[attempt] if attempt < len(retry_delays) else 30
+                        )
+                        print(
+                            f"[CareLoop] Rate limited, retry {attempt + 1}/{max_retries} in {delay}s..."
+                        )
+                        await asyncio.sleep(delay)
+                        continue
+
+                    response.raise_for_status()
+                    data = response.json()
+
+                    msg = data["choices"][0]["message"]
+                    content = msg.get("content", "")
+                    thinking = msg.get("reasoning_content")
+
+                    if thinking:
+                        all_thinking.append(thinking)
+
+                    usage_obj = data.get("usage")
+                    if usage_obj:
+                        u = Usage(
+                            prompt_tokens=usage_obj.get("prompt_tokens", 0),
+                            completion_tokens=usage_obj.get("completion_tokens", 0),
+                            total_tokens=usage_obj.get("total_tokens", 0),
+                        )
+                        u.cost_cents = _calc_cost(_model(), u)
+                        record_usage(
+                            "call",
+                            _model(),
+                            u.prompt_tokens,
+                            u.completion_tokens,
+                            u.cost_cents,
+                        )
+                    else:
+                        prompt_chars = sum(
+                            len(m.get("content", "") or "") for m in working_messages
+                        )
+                        est_prompt = max(1, prompt_chars // 4)
+                        est_completion = max(1, len(content) // 4)
+                        u = Usage(
+                            prompt_tokens=est_prompt,
+                            completion_tokens=est_completion,
+                            total_tokens=est_prompt + est_completion,
+                        )
+                        u.cost_cents = _calc_cost(_model(), u)
+                        record_usage(
+                            "call",
+                            _model(),
+                            u.prompt_tokens,
+                            u.completion_tokens,
+                            u.cost_cents,
+                        )
+
+                    tool_calls = msg.get("tool_calls")
+                    if tool_calls and tools and patient_id:
+                        assistant_msg = {
+                            "role": "assistant",
+                            "content": content or "",
+                            "tool_calls": [
+                                {
+                                    "id": tc.get("id", str(uuid.uuid4())),
+                                    "type": "function",
+                                    "function": {
+                                        "name": tc["function"]["name"],
+                                        "arguments": tc["function"]["arguments"],
+                                    },
+                                }
+                                for tc in tool_calls
+                            ],
+                        }
+                        working_messages.append(assistant_msg)
+
+                        for tc in tool_calls:
+                            func_name = tc["function"]["name"]
+                            try:
+                                func_args = json.loads(tc["function"]["arguments"])
+                            except (json.JSONDecodeError, TypeError):
+                                func_args = {}
+                            result = await execute_tool(
+                                func_name, func_args, patient_id
+                            )
+                            print(f"[CareLoop] Tool executed: {func_name} -> {result}")
+                            working_messages.append(
+                                {
+                                    "role": "tool",
+                                    "tool_call_id": tc.get("id", str(uuid.uuid4())),
+                                    "content": json.dumps(result),
+                                }
+                            )
+
+                        final_content = content
+                        break
+
+                    final_content = content
+                    combined = "\n---\n".join(all_thinking) if all_thinking else None
+                    return final_content, True, combined
+
+            except httpx.HTTPStatusError as e:
+                if e.response.status_code == 429 and attempt < max_retries - 1:
+                    await asyncio.sleep(retry_delays[attempt])
                     continue
+                print(f"[CareLoop] GLM API error: {e}")
+                if final_content:
+                    combined = "\n---\n".join(all_thinking) if all_thinking else None
+                    return final_content, True, combined
+                return str(e), False, None
+            except Exception as e:
+                print(f"[CareLoop] GLM API error: {e}")
+                if final_content:
+                    combined = "\n---\n".join(all_thinking) if all_thinking else None
+                    return final_content, True, combined
+                return str(e), False, None
+        else:
+            if final_content:
+                combined = "\n---\n".join(all_thinking) if all_thinking else None
+                return final_content, True, combined
+            return "Rate limit exceeded", False, None
 
-                response.raise_for_status()
-                data = response.json()
-
-                msg = data["choices"][0]["message"]
-                content = msg.get("content", "")
-                thinking = msg.get("reasoning_content")
-
-                usage_obj = data.get("usage")
-                if usage_obj:
-                    u = Usage(
-                        prompt_tokens=usage_obj.get("prompt_tokens", 0),
-                        completion_tokens=usage_obj.get("completion_tokens", 0),
-                        total_tokens=usage_obj.get("total_tokens", 0),
-                    )
-                    u.cost_cents = _calc_cost(_model(), u)
-                    record_usage(
-                        "call",
-                        _model(),
-                        u.prompt_tokens,
-                        u.completion_tokens,
-                        u.cost_cents,
-                    )
-                else:
-                    prompt_chars = len(system_prompt or "") + sum(
-                        len(m.get("content", "")) for m in messages
-                    )
-                    est_prompt = max(1, prompt_chars // 4)
-                    est_completion = max(1, len(content) // 4)
-                    u = Usage(
-                        prompt_tokens=est_prompt,
-                        completion_tokens=est_completion,
-                        total_tokens=est_prompt + est_completion,
-                    )
-                    u.cost_cents = _calc_cost(_model(), u)
-                    record_usage(
-                        "call",
-                        _model(),
-                        u.prompt_tokens,
-                        u.completion_tokens,
-                        u.cost_cents,
-                    )
-
-                return content, True, thinking
-
-        except httpx.HTTPStatusError as e:
-            if e.response.status_code == 429 and attempt < max_retries - 1:
-                await asyncio.sleep(retry_delays[attempt])
-                continue
-            print(f"[CareLoop] GLM API error: {e}")
-            return str(e), False, None
-        except Exception as e:
-            print(f"[CareLoop] GLM API error: {e}")
-            return str(e), False, None
-
-    return "Rate limit exceeded", False, None
+    combined = "\n---\n".join(all_thinking) if all_thinking else None
+    return final_content, True, combined
 
 
 async def analyze_image(base64_image: str, prompt: str) -> tuple[str, bool]:
@@ -743,7 +879,10 @@ async def run_care_analysis(patient_id: str) -> dict:
         full_prompt = ANALYSIS_SYSTEM_PROMPT + "\n\n" + user_msg_content
 
         content, success, thinking = await call_glm(
-            [user_msg], ANALYSIS_SYSTEM_PROMPT, tools=True
+            [user_msg],
+            ANALYSIS_SYSTEM_PROMPT,
+            tools=True,
+            patient_id=patient_id,
         )
 
         if success:
@@ -924,7 +1063,10 @@ async def run_careplan_generation(patient_id: str) -> dict:
         }
 
         content, success, thinking = await call_glm(
-            [user_msg], CAREPLAN_PROMPT, tools=True
+            [user_msg],
+            CAREPLAN_PROMPT,
+            tools=True,
+            patient_id=patient_id,
         )
 
         if success:
