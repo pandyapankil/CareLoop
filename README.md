@@ -169,10 +169,10 @@ Click "Run AI Analysis" and watch:
 
 ### 4. Ask GLM Questions
 Go to "Ask CareLoop AI" to:
-- Type a question or use voice input (Web Speech API)
+- Type a question or use voice input (Web Speech API, requires HTTPS)
 - Get context-aware, empathetic responses referencing patient history
-- See previous Q&A history
-- Text-to-speech for responses
+- See previous Q&A history with text-to-speech for responses
+- Tool-augmented Q&A — GLM fetches patient history for precise answers
 
 ### 5. Generate Care Plans
 Click "Generate Care Plan" for:
@@ -182,7 +182,7 @@ Click "Generate Care Plan" for:
 - Autonomous task creation via function calling
 
 ### 6. Detect Trends
-Click "Detect Trends" to:
+Click "Detect Trends" (requires at least one AI analysis) to:
 - Compare multiple analyses over time
 - Identify patterns and trajectory direction
 - See recommendations based on trend analysis
@@ -229,7 +229,7 @@ Switch between demo personas to see:
 | **Frontend** | Jinja2 SSR, vanilla CSS | Zero build step, fast load, accessible |
 | **Database** | SQLite | Zero-config, portable, WAL mode |
 | **AI** | GLM 5.1 via Z.ai API | OpenAI-compatible, thinking, function calling |
-| **Styling** | Dark mode, glassmorphism | Premium healthcare aesthetic |
+| **Styling** | Dark mode, glassmorphism, responsive | Premium healthcare aesthetic, mobile-ready |
 | **Container** | Docker + Cloud Run | One-command deploy |
 
 ---
