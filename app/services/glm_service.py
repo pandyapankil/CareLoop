@@ -230,11 +230,14 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "get_patient_history",
-            "description": "Get complete care history for a patient including encounters, analyses, tasks",
+            "description": "Retrieve comprehensive clinical history for a patient including encounters, previous analyses, and tasks.",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "patient_id": {"type": "string", "description": "Patient ID"},
+                    "patient_id": {
+                        "type": "string",
+                        "description": "The unique ID of the patient",
+                    }
                 },
                 "required": ["patient_id"],
             },
@@ -801,7 +804,9 @@ Return JSON: {{"trend_summary": "...", "patterns": [...], "direction": "improvin
 QA_SYSTEM_PROMPT = """You are CareLoop AI, helping patients understand their care powered by GLM 5.1.
 Be warm, empathetic, and reassuring. Use plain language a patient can understand.
 If unsure about medical advice, say so and recommend consulting their provider.
-Keep answers concise but thorough. Reference their specific condition when relevant."""
+Keep answers concise but thorough. Reference their specific condition when relevant.
+
+You have access to tools that can fetch the patient's full clinical history. Use get_patient_history if you need more context to answer precisely."""
 
 ENCOUNTER_SUMMARY_PROMPT = """You are CareLoop AI extracting structured clinical data powered by GLM 5.1.
 Extract from provider notes and return JSON:
@@ -1064,7 +1069,9 @@ async def run_patient_qa(patient_id: str, question: str) -> dict:
             "content": f"{context}\n\nQuestion: {question}\n\nAnswer this question.",
         }
 
-        content, success, thinking = await call_glm([user_msg], QA_SYSTEM_PROMPT)
+        content, success, thinking = await call_glm(
+            [user_msg], QA_SYSTEM_PROMPT, tools=True, patient_id=patient_id
+        )
 
         if not success:
             answer = get_mock_qa_answer(question)
@@ -1519,7 +1526,11 @@ async def stream_patient_qa(
 
     accumulated = ""
     async for chunk in stream_glm(
-        messages, QA_SYSTEM_PROMPT, demo_data=get_mock_qa_answer(question)
+        messages,
+        QA_SYSTEM_PROMPT,
+        tools=True,
+        patient_id=patient_id,
+        demo_data=get_mock_qa_answer(question),
     ):
         if chunk.event == StreamEventType.CONTENT:
             accumulated += chunk.content

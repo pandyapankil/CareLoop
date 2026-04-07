@@ -127,20 +127,32 @@
 	const patientId = "{{ patient.id }}";
 
 	if (btnMic && ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
-		const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-		const recognition = new SpeechRecognition();
+		var SpeechRecognitionAPI = window.webkitSpeechRecognition || window.SpeechRecognition;
+		var recognition = new SpeechRecognitionAPI();
 		recognition.continuous = false;
 		recognition.interimResults = false;
 		recognition.lang = 'en-US';
 
+		var isListening = false;
+
 		btnMic.addEventListener('click', function() {
-			if (btnMic.classList.contains('listening')) {
-				recognition.stop();
+			if (isListening) {
+				recognition.abort();
+				isListening = false;
+				btnMic.classList.remove('listening');
+				voiceStatus.textContent = '';
 				return;
 			}
-			btnMic.classList.add('listening');
-			voiceStatus.textContent = '🎤 Listening...';
-			recognition.start();
+			try {
+				btnMic.classList.add('listening');
+				voiceStatus.textContent = '🎤 Listening...';
+				isListening = true;
+				recognition.start();
+			} catch (e) {
+				voiceStatus.textContent = 'Could not start voice input. Please try again.';
+				btnMic.classList.remove('listening');
+				isListening = false;
+			}
 		});
 
 		recognition.onresult = function(event) {
@@ -148,17 +160,29 @@
 			voiceStatus.textContent = '';
 		};
 		recognition.onerror = function(event) {
-			voiceStatus.textContent = 'Error: ' + event.error;
+			var messages = {
+				'not-allowed': 'Microphone access denied. Please allow microphone permission in your browser settings.',
+				'audio-capture': 'No microphone found. Please connect a microphone and try again.',
+				'no-speech': 'No speech detected. Please try again.',
+				'network': 'Network error during speech recognition. Please check your connection.',
+				'service-not-allowed': 'Speech recognition service is not available.',
+				'aborted': 'Voice input was cancelled.'
+			};
+			voiceStatus.textContent = messages[event.error] || ('Voice error: ' + event.error);
 			btnMic.classList.remove('listening');
+			isListening = false;
 		};
 		recognition.onend = function() {
 			btnMic.classList.remove('listening');
+			isListening = false;
 			if (voiceStatus.textContent.includes('Listening')) voiceStatus.textContent = '';
 		};
 	} else {
-		btnMic.title = 'Voice input not supported';
-		btnMic.style.opacity = '0.5';
-		btnMic.style.cursor = 'not-allowed';
+		if (btnMic) {
+			btnMic.title = 'Voice input not supported in this browser';
+			btnMic.style.opacity = '0.5';
+			btnMic.style.cursor = 'not-allowed';
+		}
 	}
 
 	form.addEventListener('submit', function(e) {

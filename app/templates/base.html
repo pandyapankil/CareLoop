@@ -187,23 +187,11 @@
 						window.isThinking = false;
 						hideThinkingBadge();
 						if (thinkingDots) thinkingDots.style.display = "none";
-						// Auto-hide reasoning section if no thinking content was received
-						if (
-							thinkingEl &&
-							!thinkingEl.textContent.trim() &&
-							reasoningSection
-						) {
+						if (reasoningSection) {
 							reasoningSection.open = false;
-							reasoningSection.style.display = "none";
 						}
-						if (
-							thinkingEl &&
-							thinkingEl.textContent.trim() === ""
-						) {
-							if (reasoningSection) reasoningSection.open = false;
-							// Optionally hide the reasoning text box specifically if the section is kept open for other reasons
-							if (thinkingEl.parentElement)
-								thinkingEl.parentElement.style.display = "none";
+						if (thinkingEl && thinkingEl.textContent.trim() === "" && reasoningSection) {
+							reasoningSection.style.display = "none";
 						}
 						const tc = window.tasksCreatedCount || 0;
 						if (tc > 0) {
