@@ -164,7 +164,7 @@
 				'not-allowed': 'Microphone access denied. Please allow microphone permission in your browser settings.',
 				'audio-capture': 'No microphone found. Please connect a microphone and try again.',
 				'no-speech': 'No speech detected. Please try again.',
-				'network': 'Network error during speech recognition. Please check your connection.',
+				'network': 'Speech recognition requires a secure connection (HTTPS). Please use HTTPS or localhost.',
 				'service-not-allowed': 'Speech recognition service is not available.',
 				'aborted': 'Voice input was cancelled.'
 			};
@@ -177,12 +177,15 @@
 			isListening = false;
 			if (voiceStatus.textContent.includes('Listening')) voiceStatus.textContent = '';
 		};
-	} else {
-		if (btnMic) {
+	} else if (btnMic) {
+		if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+			btnMic.title = 'Voice input requires HTTPS';
+			voiceStatus.textContent = 'Voice input requires HTTPS. Use a secure connection to enable the microphone.';
+		} else {
 			btnMic.title = 'Voice input not supported in this browser';
-			btnMic.style.opacity = '0.5';
-			btnMic.style.cursor = 'not-allowed';
 		}
+		btnMic.style.opacity = '0.5';
+		btnMic.style.cursor = 'not-allowed';
 	}
 
 	form.addEventListener('submit', function(e) {

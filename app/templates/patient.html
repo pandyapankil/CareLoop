@@ -43,6 +43,7 @@ endblock %} {% block content %}
 			📋 Generate Care Plan
 		</button>
 	</form>
+	{% set has_analyses = timeline | selectattr('type', 'eq', 'analysis') | list | length > 0 %}
 	<form
 		action="/patient/{{ patient.id }}/trends"
 		method="POST"
@@ -51,11 +52,11 @@ endblock %} {% block content %}
 		data-output="#analysis-output"
 		style="display: inline"
 	>
-		<button type="submit" class="btn btn-outline">📈 Detect Trends</button>
+		<button type="submit" class="btn btn-outline" {% if not has_analyses %}disabled title="Run an AI Analysis first to detect trends"{% endif %}>📈 Detect Trends</button>
 	</form>
 </div>
 
-<details class="glm-reasoning-section" id="glm-reasoning-section" open>
+<details class="glm-reasoning-section" id="glm-reasoning-section" style="display:none">
 	<summary class="glm-reasoning-header">
 		<span class="glm-reasoning-icon">🧠</span>
 		<span class="glm-reasoning-title">🤖 GLM 5.1 Reasoning</span>

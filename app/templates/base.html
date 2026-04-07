@@ -132,7 +132,10 @@
 				const thinkingDots =
 					document.getElementById("glm-thinking-dots");
 
-				if (reasoningSection) reasoningSection.open = true;
+				if (reasoningSection) {
+					reasoningSection.style.display = '';
+					reasoningSection.open = true;
+				}
 				if (thinkingDots) thinkingDots.style.display = "flex";
 				if (thinkingEl) {
 					thinkingEl.textContent = "";
